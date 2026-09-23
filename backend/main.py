@@ -1,0 +1,361 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+
+class Deal(BaseModel):
+    id: str
+    date: str
+    location: str
+    team: str
+    product: str
+    company: str
+    segment: str
+    reason: str
+    competitor: str
+    stage: str
+    value: int
+    priority: str
+    action: str
+
+
+app = FastAPI(
+    title="Lost Deal Recovery API",
+    description="FastAPI backend for the Lost Deal Reason & Recovery Intelligence dashboard.",
+    version="1.0.0",
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+deals = [
+    {
+        "id": "CRM-001",
+        "date": "2026-01-08",
+        "location": "Bengaluru",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Aster Systems",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Salesforce",
+        "stage": "Negotiation",
+        "value": 850000,
+        "priority": "HIGH",
+        "action": "Re-engage with ROI comparison and flexible pricing.",
+    },
+    {
+        "id": "CRM-002",
+        "date": "2026-01-14",
+        "location": "Mumbai",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Nova Retail",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Microsoft",
+        "stage": "Proposal",
+        "value": 720000,
+        "priority": "HIGH",
+        "action": "Review competitor feature gap and schedule executive follow-up.",
+    },
+    {
+        "id": "CRM-003",
+        "date": "2026-01-22",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Analytics Suite",
+        "company": "Bluewave Foods",
+        "segment": "SMB",
+        "reason": "Product Fit",
+        "competitor": "Zoho",
+        "stage": "Evaluation",
+        "value": 280000,
+        "priority": "MEDIUM",
+        "action": "Offer a product-fit workshop and targeted demo.",
+    },
+    {
+        "id": "CRM-004",
+        "date": "2026-02-03",
+        "location": "Chennai",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Orbit Logistics",
+        "segment": "Mid-Market",
+        "reason": "Timing",
+        "competitor": "HubSpot",
+        "stage": "Proposal",
+        "value": 460000,
+        "priority": "MEDIUM",
+        "action": "Create a 60-day re-engagement reminder.",
+    },
+    {
+        "id": "CRM-005",
+        "date": "2026-02-11",
+        "location": "Hyderabad",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Vertex Health",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "AWS",
+        "stage": "Negotiation",
+        "value": 1100000,
+        "priority": "HIGH",
+        "action": "Escalate for commercial review and ROI justification.",
+    },
+    {
+        "id": "CRM-006",
+        "date": "2026-02-18",
+        "location": "Pune",
+        "team": "SMB",
+        "product": "CRM Platform",
+        "company": "Bright Retail",
+        "segment": "SMB",
+        "reason": "Budget",
+        "competitor": "Zoho",
+        "stage": "Qualification",
+        "value": 190000,
+        "priority": "LOW",
+        "action": "Revisit during next budget cycle.",
+    },
+    {
+        "id": "CRM-007",
+        "date": "2026-02-26",
+        "location": "Delhi",
+        "team": "Mid-Market",
+        "product": "Analytics Suite",
+        "company": "Northstar Finance",
+        "segment": "Mid-Market",
+        "reason": "Competitor",
+        "competitor": "Power BI",
+        "stage": "Negotiation",
+        "value": 640000,
+        "priority": "HIGH",
+        "action": "Compare analytics capabilities and migration benefits.",
+    },
+    {
+        "id": "CRM-008",
+        "date": "2026-03-04",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Cloud Platform",
+        "company": "Harbor Tech",
+        "segment": "SMB",
+        "reason": "Product Fit",
+        "competitor": "AWS",
+        "stage": "Evaluation",
+        "value": 230000,
+        "priority": "MEDIUM",
+        "action": "Run a technical discovery session.",
+    },
+    {
+        "id": "CRM-009",
+        "date": "2026-03-12",
+        "location": "Bengaluru",
+        "team": "Enterprise",
+        "product": "CRM Platform",
+        "company": "Zenith Motors",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Salesforce",
+        "stage": "Proposal",
+        "value": 920000,
+        "priority": "HIGH",
+        "action": "Build competitor battlecard and executive outreach.",
+    },
+    {
+        "id": "CRM-010",
+        "date": "2026-03-18",
+        "location": "Mumbai",
+        "team": "Mid-Market",
+        "product": "Analytics Suite",
+        "company": "Urban Living",
+        "segment": "Mid-Market",
+        "reason": "Timing",
+        "competitor": "Tableau",
+        "stage": "Evaluation",
+        "value": 370000,
+        "priority": "MEDIUM",
+        "action": "Schedule future re-engagement based on buying cycle.",
+    },
+    {
+        "id": "CRM-011",
+        "date": "2026-03-25",
+        "location": "Chennai",
+        "team": "SMB",
+        "product": "CRM Platform",
+        "company": "Green Basket",
+        "segment": "SMB",
+        "reason": "Budget",
+        "competitor": "Zoho",
+        "stage": "Qualification",
+        "value": 150000,
+        "priority": "LOW",
+        "action": "Send lower-tier package when budget becomes available.",
+    },
+    {
+        "id": "CRM-012",
+        "date": "2026-04-02",
+        "location": "Hyderabad",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Prime Energy",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Azure",
+        "stage": "Negotiation",
+        "value": 1250000,
+        "priority": "HIGH",
+        "action": "Conduct executive pricing review and ROI analysis.",
+    },
+    {
+        "id": "CRM-013",
+        "date": "2026-04-10",
+        "location": "Pune",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Axis Manufacturing",
+        "segment": "Mid-Market",
+        "reason": "Product Fit",
+        "competitor": "HubSpot",
+        "stage": "Evaluation",
+        "value": 410000,
+        "priority": "MEDIUM",
+        "action": "Map missing requirements and propose configuration.",
+    },
+    {
+        "id": "CRM-014",
+        "date": "2026-04-18",
+        "location": "Delhi",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Summit Bank",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Tableau",
+        "stage": "Negotiation",
+        "value": 980000,
+        "priority": "HIGH",
+        "action": "Present differentiated analytics capabilities.",
+    },
+    {
+        "id": "CRM-015",
+        "date": "2026-04-25",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Cloud Platform",
+        "company": "Coastal Foods",
+        "segment": "SMB",
+        "reason": "Timing",
+        "competitor": "AWS",
+        "stage": "Proposal",
+        "value": 210000,
+        "priority": "LOW",
+        "action": "Place into quarterly recovery campaign.",
+    },
+    {
+        "id": "CRM-016",
+        "date": "2026-05-03",
+        "location": "Bengaluru",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Techline India",
+        "segment": "Mid-Market",
+        "reason": "Price",
+        "competitor": "Salesforce",
+        "stage": "Proposal",
+        "value": 570000,
+        "priority": "HIGH",
+        "action": "Reopen pricing discussion with value-based package.",
+    },
+    {
+        "id": "CRM-017",
+        "date": "2026-05-11",
+        "location": "Mumbai",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Metro Infra",
+        "segment": "Enterprise",
+        "reason": "Budget",
+        "competitor": "Azure",
+        "stage": "Qualification",
+        "value": 690000,
+        "priority": "MEDIUM",
+        "action": "Monitor budget approval and prepare re-entry plan.",
+    },
+    {
+        "id": "CRM-018",
+        "date": "2026-05-19",
+        "location": "Chennai",
+        "team": "SMB",
+        "product": "Analytics Suite",
+        "company": "FreshMart",
+        "segment": "SMB",
+        "reason": "Competitor",
+        "competitor": "Power BI",
+        "stage": "Evaluation",
+        "value": 175000,
+        "priority": "LOW",
+        "action": "Share product comparison and customer proof points.",
+    },
+    {
+        "id": "CRM-019",
+        "date": "2026-05-27",
+        "location": "Hyderabad",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Medix Labs",
+        "segment": "Mid-Market",
+        "reason": "Product Fit",
+        "competitor": "HubSpot",
+        "stage": "Proposal",
+        "value": 520000,
+        "priority": "MEDIUM",
+        "action": "Schedule solution-design workshop.",
+    },
+    {
+        "id": "CRM-020",
+        "date": "2026-06-05",
+        "location": "Pune",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Global Textiles",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Tableau",
+        "stage": "Negotiation",
+        "value": 890000,
+        "priority": "HIGH",
+        "action": "Create executive-level commercial recovery plan.",
+    },
+]
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "Lost Deal Recovery API is running"
+    }
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok"
+    }
+
+
+@app.get("/api/deals", response_model=list[Deal])
+def get_deals():
+    return deals

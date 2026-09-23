@@ -1,0 +1,3043 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  components/
+    DashboardCharts.tsx
+    DecisionPanel.tsx
+    IntelligencePanel.tsx
+    RecoveryTable.tsx
+  favicon.ico
+  globals.css
+  layout.tsx
+  page.tsx
+backend/
+  main.py
+  requirements.txt
+public/
+  file.svg
+  globe.svg
+  next.svg
+  vercel.svg
+  window.svg
+.gitignore
+AGENTS.md
+CLAUDE.md
+eslint.config.mjs
+next.config.ts
+package.json
+postcss.config.mjs
+README.md
+tsconfig.json
+UAT_CHECKLIST.md
+VAR_REPORT.md
+vercel.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/components/DashboardCharts.tsx">
+"use client";
+
+import { useState } from "react";
+import ReactECharts from "echarts-for-react";
+import IntelligencePanel from "./IntelligencePanel";
+
+type ChartProps = {
+  lossReasons: {
+    reason: string;
+    count: number;
+  }[];
+
+  segments: {
+    segment: string;
+    reason: string;
+    value: number;
+  }[];
+
+  competitors: {
+    competitor: string;
+    wins: number;
+    losses: number;
+  }[];
+};
+
+type SelectedSignal = {
+  type: "reason" | "competitor";
+  title: string;
+  value?: number;
+  secondary?: string;
+  tertiary?: string;
+  description?: string;
+  action?: string;
+};
+
+export default function DashboardCharts({
+  lossReasons,
+  segments,
+  competitors,
+}: ChartProps) {
+  const [selected, setSelected] =
+    useState<SelectedSignal | null>(null);
+
+  /* ---------------- LOSS REASON PARETO ---------------- */
+
+  const paretoLabels = lossReasons.map(
+    (item) => item.reason
+  );
+
+  const paretoValues = lossReasons.map(
+    (item) => item.count
+  );
+
+  const total = paretoValues.reduce(
+    (sum, value) => sum + value,
+    0
+  );
+
+  let running = 0;
+
+  const cumulative = paretoValues.map((value) => {
+    running += value;
+
+    return total > 0
+      ? Math.round((running / total) * 100)
+      : 0;
+  });
+
+  const paretoOption = {
+    backgroundColor: "transparent",
+
+    tooltip: {
+      trigger: "axis",
+    },
+
+    grid: {
+      left: 45,
+      right: 45,
+      top: 35,
+      bottom: 70,
+    },
+
+    xAxis: {
+      type: "category",
+      data: paretoLabels,
+
+      axisLabel: {
+        color: "#94a3b8",
+        rotate: 25,
+        fontSize: 10,
+      },
+
+      axisLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    yAxis: [
+      {
+        type: "value",
+        name: "Deals",
+
+        nameTextStyle: {
+          color: "#64748b",
+        },
+
+        axisLabel: {
+          color: "#64748b",
+        },
+
+        splitLine: {
+          lineStyle: {
+            color: "#1f2937",
+          },
+        },
+      },
+
+      {
+        type: "value",
+        name: "%",
+
+        min: 0,
+        max: 100,
+
+        axisLabel: {
+          color: "#64748b",
+        },
+
+        splitLine: {
+          show: false,
+        },
+      },
+    ],
+
+    series: [
+      {
+        name: "Lost Deals",
+        type: "bar",
+        data: paretoValues,
+
+        barMaxWidth: 36,
+
+        itemStyle: {
+          color: "#38bdf8",
+          borderRadius: [5, 5, 0, 0],
+        },
+      },
+
+      {
+        name: "Cumulative",
+        type: "line",
+
+        yAxisIndex: 1,
+        data: cumulative,
+
+        smooth: true,
+
+        symbol: "circle",
+        symbolSize: 6,
+
+        itemStyle: {
+          color: "#818cf8",
+        },
+
+        lineStyle: {
+          width: 2,
+          color: "#818cf8",
+        },
+      },
+    ],
+  };
+
+  /* ---------------- SEGMENT HEATMAP ---------------- */
+
+  const segmentLabels = [
+    ...new Set(
+      segments.map((item) => item.segment)
+    ),
+  ];
+
+  const reasonLabels = [
+    ...new Set(
+      segments.map((item) => item.reason)
+    ),
+  ];
+
+  const heatmapData = segments.map((item) => {
+    const x = segmentLabels.indexOf(item.segment);
+    const y = reasonLabels.indexOf(item.reason);
+
+    return [x, y, item.value];
+  });
+
+  const heatmapMax =
+    segments.length > 0
+      ? Math.max(
+          1,
+          ...segments.map((item) => item.value)
+        )
+      : 1;
+
+  const heatmapOption = {
+    backgroundColor: "transparent",
+
+    tooltip: {
+      position: "top",
+
+      formatter: (params: {
+        data: [number, number, number];
+      }) => {
+        const [x, y, value] = params.data;
+
+        return `
+          <div>
+            <strong>${segmentLabels[x]}</strong><br/>
+            ${reasonLabels[y]}<br/>
+            Lost deals: ${value}
+          </div>
+        `;
+      },
+    },
+
+    grid: {
+      left: 95,
+      right: 20,
+      top: 20,
+      bottom: 55,
+    },
+
+    xAxis: {
+      type: "category",
+      data: segmentLabels,
+
+      axisLabel: {
+        color: "#94a3b8",
+        fontSize: 10,
+      },
+
+      axisLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    yAxis: {
+      type: "category",
+      data: reasonLabels,
+
+      axisLabel: {
+        color: "#94a3b8",
+        fontSize: 9,
+      },
+
+      axisLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    visualMap: {
+      min: 0,
+      max: heatmapMax,
+
+      calculable: true,
+
+      orient: "horizontal",
+      left: "center",
+      bottom: 0,
+
+      textStyle: {
+        color: "#64748b",
+      },
+    },
+
+    series: [
+      {
+        type: "heatmap",
+        data: heatmapData,
+
+        label: {
+          show: true,
+          color: "#e2e8f0",
+          fontSize: 10,
+        },
+
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowColor:
+              "rgba(56,189,248,.5)",
+          },
+        },
+      },
+    ],
+  };
+
+  /* ---------------- COMPETITOR MATRIX ---------------- */
+
+  const competitorOption = {
+    backgroundColor: "transparent",
+
+    tooltip: {
+      trigger: "axis",
+    },
+
+    legend: {
+      textStyle: {
+        color: "#94a3b8",
+      },
+    },
+
+    grid: {
+      left: 45,
+      right: 20,
+      top: 50,
+      bottom: 55,
+    },
+
+    xAxis: {
+      type: "category",
+
+      data: competitors.map(
+        (item) => item.competitor
+      ),
+
+      axisLabel: {
+        color: "#94a3b8",
+        fontSize: 10,
+        rotate: 20,
+      },
+
+      axisLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    yAxis: {
+      type: "value",
+
+      axisLabel: {
+        color: "#64748b",
+      },
+
+      splitLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    series: [
+      {
+        name: "Wins",
+        type: "bar",
+
+        data: competitors.map(
+          (item) => item.wins
+        ),
+
+        itemStyle: {
+          color: "#38bdf8",
+          borderRadius: [4, 4, 0, 0],
+        },
+      },
+
+      {
+        name: "Losses",
+        type: "bar",
+
+        data: competitors.map(
+          (item) => item.losses
+        ),
+
+        itemStyle: {
+          color: "#818cf8",
+          borderRadius: [4, 4, 0, 0],
+        },
+      },
+    ],
+  };
+
+  return (
+    <>
+      <div className="space-y-5">
+
+        {/* ================= PARETO ================= */}
+
+        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
+
+          <div className="mb-3">
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              LOSS-REASON PARETO
+            </div>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Identifies the loss reasons contributing most
+              to missed opportunities. Click a reason for
+              intelligence.
+            </p>
+          </div>
+
+          <ReactECharts
+            option={paretoOption}
+            style={{
+              height: 300,
+              width: "100%",
+            }}
+            opts={{
+              renderer: "canvas",
+            }}
+            onEvents={{
+              click: (params: {
+                seriesType?: string;
+                dataIndex?: number;
+              }) => {
+                if (
+                  params.seriesType !== "bar" ||
+                  params.dataIndex === undefined
+                ) {
+                  return;
+                }
+
+                const item =
+                  lossReasons[params.dataIndex];
+
+                if (!item) return;
+
+                setSelected({
+                  type: "reason",
+                  title: item.reason,
+                  value: item.count,
+
+                  secondary:
+                    `${item.count} lost deals`,
+
+                  tertiary:
+                    "Loss Reason",
+
+                  description:
+                    `The loss reason "${item.reason}" contributes ${item.count} lost opportunities in the current filtered dataset. Management should investigate whether this pattern can be addressed through pricing, product fit, positioning or follow-up improvements.`,
+
+                  action:
+                    "Review the affected deals, identify recurring buyer objections and prioritize high-value opportunities where this loss reason may be recoverable.",
+                });
+              },
+            }}
+          />
+
+        </section>
+
+        {/* ================= HEATMAP ================= */}
+
+        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
+
+          <div className="mb-3">
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              SEGMENT HEATMAP
+            </div>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Shows where specific loss reasons are
+              concentrated.
+            </p>
+          </div>
+
+          <ReactECharts
+            option={heatmapOption}
+            style={{
+              height: 300,
+              width: "100%",
+            }}
+            opts={{
+              renderer: "canvas",
+            }}
+          />
+
+        </section>
+
+        {/* ================= COMPETITOR ================= */}
+
+        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
+
+          <div className="mb-3">
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              COMPETITOR MATRIX
+            </div>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Compares competitive wins and losses. Click a
+              competitor for intelligence.
+            </p>
+          </div>
+
+          <ReactECharts
+            option={competitorOption}
+            style={{
+              height: 300,
+              width: "100%",
+            }}
+            opts={{
+              renderer: "canvas",
+            }}
+            onEvents={{
+              click: (params: {
+                seriesType?: string;
+                dataIndex?: number;
+              }) => {
+                if (
+                  params.seriesType !== "bar" ||
+                  params.dataIndex === undefined
+                ) {
+                  return;
+                }
+
+                const item =
+                  competitors[params.dataIndex];
+
+                if (!item) return;
+
+                setSelected({
+                  type: "competitor",
+
+                  title: item.competitor,
+
+                  value: item.losses,
+
+                  secondary:
+                    `${item.losses} competitive losses`,
+
+                  tertiary:
+                    `${item.wins} wins / ${item.losses} losses`,
+
+                  description:
+                    `${item.competitor} appears in ${item.losses} competitive losses in the current filtered dataset. This signal can help management investigate pricing, feature gaps, positioning and buyer-stage objections.`,
+
+                  action:
+                    "Compare competitive losses against wins, review recurring objections and identify high-value accounts where re-engagement may still be possible.",
+                });
+              },
+            }}
+          />
+
+        </section>
+      </div>
+
+      {/* ================= INTELLIGENCE PANEL ================= */}
+
+      <IntelligencePanel
+        selected={selected}
+        onClose={() => setSelected(null)}
+      />
+    </>
+  );
+}
+</file>
+
+<file path="app/components/DecisionPanel.tsx">
+"use client";
+
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Lightbulb,
+  Target,
+} from "lucide-react";
+
+type DecisionPanelProps = {
+  totalLost: number;
+  totalValue: number;
+  highPriority: number;
+  topReason: string;
+  topCompetitor: string;
+};
+
+export default function DecisionPanel({
+  totalLost,
+  totalValue,
+  highPriority,
+  topReason,
+  topCompetitor,
+}: DecisionPanelProps) {
+  const formatValue = (value: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  return (
+    <section className="rounded-2xl border border-[#38BDF8]/20 bg-[#0B1117] p-5 shadow-[0_0_30px_rgba(56,189,248,0.04)]">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#38BDF8]/20 bg-[#38BDF8]/10">
+          <Lightbulb className="h-5 w-5 text-[#38BDF8]" />
+        </div>
+
+        <div>
+          <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+            MANAGEMENT DECISION SUPPORT
+          </div>
+
+          <h2 className="mt-1 text-lg font-semibold text-slate-100">
+            What should management investigate next?
+          </h2>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-[#1F2937] bg-[#030712] p-4">
+          <div className="flex items-center gap-2 text-[9px] tracking-widest text-slate-500">
+            <Target className="h-3.5 w-3.5" />
+            LOST DEALS
+          </div>
+
+          <div className="mt-2 text-2xl font-bold text-slate-100">
+            {totalLost}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[#1F2937] bg-[#030712] p-4">
+          <div className="text-[9px] tracking-widest text-slate-500">
+            PIPELINE VALUE LOST
+          </div>
+
+          <div className="mt-2 text-xl font-bold text-slate-100">
+            {formatValue(totalValue)}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[#1F2937] bg-[#030712] p-4">
+          <div className="flex items-center gap-2 text-[9px] tracking-widest text-slate-500">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            HIGH PRIORITY
+          </div>
+
+          <div className="mt-2 text-2xl font-bold text-red-300">
+            {highPriority}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[#1F2937] bg-[#030712] p-4">
+          <div className="text-[9px] tracking-widest text-slate-500">
+            TOP LOSS REASON
+          </div>
+
+          <div className="mt-2 truncate text-sm font-semibold text-[#38BDF8]">
+            {topReason}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-[#1F2937] bg-[#030712] p-4">
+          <div className="flex items-center gap-2 text-[9px] font-semibold tracking-widest text-[#38BDF8]">
+            <ArrowUpRight className="h-3.5 w-3.5" />
+            INVESTIGATE
+          </div>
+
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            Investigate why <strong>{topReason}</strong> is
+            the leading loss reason. Review pricing,
+            product fit, buyer objections and follow-up
+            timing before changing the sales strategy.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-[#1F2937] bg-[#030712] p-4">
+          <div className="text-[9px] font-semibold tracking-widest text-[#818CF8]">
+            COMPETITIVE SIGNAL
+          </div>
+
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            <strong>{topCompetitor}</strong> appears
+            frequently in competitive losses. Management
+            should compare pricing, feature gaps,
+            positioning and buyer-stage objections against
+            this competitor.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-[#38BDF8]/10 bg-[#38BDF8]/5 p-4">
+        <div className="text-[9px] font-semibold tracking-widest text-slate-500">
+          RECOVERY STRATEGY
+        </div>
+
+        <p className="mt-2 text-xs leading-5 text-slate-400">
+          Prioritize high-value opportunities where the
+          loss reason is addressable and the buyer has not
+          permanently closed the opportunity. Use the
+          recovery queue to guide targeted re-engagement.
+        </p>
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="app/components/IntelligencePanel.tsx">
+"use client";
+
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Building2,
+  CircleDollarSign,
+  Target,
+  X,
+} from "lucide-react";
+
+type IntelligencePanelProps = {
+  selected: {
+    type: "reason" | "competitor" | "deal";
+    title: string;
+    value?: number;
+    secondary?: string;
+    tertiary?: string;
+    description?: string;
+    action?: string;
+  } | null;
+  onClose: () => void;
+};
+
+export default function IntelligencePanel({
+  selected,
+  onClose,
+}: IntelligencePanelProps) {
+  if (!selected) return null;
+
+  const formatValue = (
+  value?: number,
+  type?: "reason" | "competitor" | "deal"
+) => {
+  if (value === undefined) return "—";
+
+  if (type === "deal") {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
+  if (type === "reason") {
+    return `${value} lost deals`;
+  }
+
+  if (type === "competitor") {
+    return `${value} deals`;
+  }
+
+  return String(value);
+};
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px]"
+        onClick={onClose}
+      />
+
+      {/* Intelligence Sidebar */}
+      <aside className="fixed right-0 top-0 z-50 flex h-screen w-full flex-col border-l border-[#1F2937] bg-[#030712] shadow-[-20px_0_60px_rgba(0,0,0,0.45)] sm:w-[30vw] sm:min-w-[360px]">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-[#1F2937] px-5 py-5">
+          <div>
+            <div className="text-[9px] font-semibold tracking-[0.28em] text-[#38BDF8]">
+              DEAL INTELLIGENCE
+            </div>
+
+            <h2 className="mt-1 text-xl font-semibold text-slate-100">
+              {selected.title}
+            </h2>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#1F2937] text-slate-400 transition hover:border-[#38BDF8]/40 hover:text-[#38BDF8]"
+            aria-label="Close intelligence panel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          {/* Selected item */}
+          <section className="rounded-xl border border-[#38BDF8]/20 bg-[#0B1117] p-4">
+            <div className="text-[9px] tracking-[0.2em] text-slate-500">
+              SELECTED SIGNAL
+            </div>
+
+            <div className="mt-2 text-lg font-semibold text-slate-100">
+              {selected.title}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-[#1F2937] bg-[#030712] p-3">
+                <div className="flex items-center gap-2 text-[8px] tracking-widest text-slate-500">
+                  <Target className="h-3 w-3" />
+                  TYPE
+                </div>
+
+                <div className="mt-2 text-sm font-semibold uppercase text-[#38BDF8]">
+                  {selected.type === "reason"
+  ? "LOSS REASON"
+  : selected.type === "competitor"
+  ? "COMPETITOR"
+  : "DEAL"}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-[#1F2937] bg-[#030712] p-3">
+                <div className="flex items-center gap-2 text-[8px] tracking-widest text-slate-500">
+                  <CircleDollarSign className="h-3 w-3" />
+                  VALUE
+                </div>
+
+                <div className="mt-2 text-sm font-semibold text-slate-100">
+                  {formatValue(selected.value, selected.type)}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Context */}
+          <section className="rounded-xl border border-[#1F2937] bg-[#0B1117] p-4">
+            <div className="flex items-center gap-2 text-[9px] font-semibold tracking-widest text-[#38BDF8]">
+              <Building2 className="h-3.5 w-3.5" />
+              CONTEXT
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="flex justify-between gap-4 border-b border-[#1F2937] pb-3">
+                <span className="text-[9px] uppercase tracking-wider text-slate-500">
+                  Secondary Signal
+                </span>
+
+                <span className="text-right text-xs text-slate-300">
+                  {selected.secondary || "Not available"}
+                </span>
+              </div>
+
+              <div className="flex justify-between gap-4">
+                <span className="text-[9px] uppercase tracking-wider text-slate-500">
+                  Segment / Stage
+                </span>
+
+                <span className="text-right text-xs text-slate-300">
+                  {selected.tertiary || "Not available"}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* Why this matters */}
+          <section className="rounded-xl border border-[#38BDF8]/20 bg-[#0B1117] p-4">
+            <div className="text-[9px] font-semibold tracking-[0.2em] text-[#38BDF8]">
+              WHY THIS MATTERS
+            </div>
+
+            <p className="mt-3 text-xs leading-6 text-slate-300">
+              {selected.description ||
+                "This signal represents a meaningful pattern in lost opportunities. Management should investigate the underlying cause before changing the sales strategy."}
+            </p>
+          </section>
+
+          {/* Competitive signal */}
+          <section className="rounded-xl border border-[#1F2937] bg-[#0B1117] p-4">
+            <div className="flex items-center gap-2 text-[9px] font-semibold tracking-[0.2em] text-[#818CF8]">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              INTELLIGENCE SIGNAL
+            </div>
+
+            <p className="mt-3 text-xs leading-6 text-slate-400">
+              {selected.secondary
+                ? `${selected.secondary} is associated with this selected signal. Review the related deals, buyer stage and competitive context.`
+                : "Review related deals, buyer stage, pricing and competitive context."}
+            </p>
+          </section>
+
+          {/* Recommended action */}
+          <section className="rounded-xl border border-[#38BDF8]/10 bg-[#38BDF8]/5 p-4">
+            <div className="flex items-center gap-2 text-[9px] font-semibold tracking-[0.2em] text-[#38BDF8]">
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              RECOMMENDED ACTION
+            </div>
+
+            <p className="mt-3 text-xs leading-6 text-slate-300">
+              {selected.action ||
+                "Prioritize high-value opportunities, review the loss reason, and determine whether targeted re-engagement is appropriate."}
+            </p>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-[#1F2937] p-4">
+          <div className="text-[8px] leading-4 text-slate-600">
+            Intelligence generated from the selected dashboard signal.
+            Synthetic CRM records are used where operational data is
+            unavailable.
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}
+</file>
+
+<file path="app/components/RecoveryTable.tsx">
+"use client";
+
+type RecoveryItem = {
+  id: string;
+  company: string;
+  reason: string;
+  competitor: string;
+  stage: string;
+  value: number;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  action: string;
+};
+
+type RecoveryTableProps = {
+  items: RecoveryItem[];
+};
+
+export default function RecoveryTable({
+  items,
+}: RecoveryTableProps) {
+  const formatValue = (value: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  return (
+    <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
+      <div className="mb-4">
+        <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+          RECOVERY PRIORITY QUEUE
+        </div>
+
+        <p className="mt-1 text-xs text-slate-500">
+          High-value lost opportunities ranked for potential
+          re-engagement.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[850px] text-left">
+          <thead>
+            <tr className="border-b border-[#1F2937] text-[9px] uppercase tracking-widest text-slate-500">
+              <th className="px-3 py-3">Company</th>
+              <th className="px-3 py-3">Loss Reason</th>
+              <th className="px-3 py-3">Competitor</th>
+              <th className="px-3 py-3">Stage</th>
+              <th className="px-3 py-3">Value</th>
+              <th className="px-3 py-3">Priority</th>
+              <th className="px-3 py-3">Recommended Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {items.map((item) => (
+              <tr
+                key={item.id}
+                className="border-b border-[#1F2937]/70 transition hover:bg-white/[0.02]"
+              >
+                <td className="px-3 py-4">
+                  <div className="text-sm font-semibold text-slate-200">
+                    {item.company}
+                  </div>
+
+                  <div className="mt-1 text-[9px] text-slate-600">
+                    {item.id}
+                  </div>
+                </td>
+
+                <td className="px-3 py-4 text-xs text-slate-400">
+                  {item.reason}
+                </td>
+
+                <td className="px-3 py-4 text-xs text-slate-400">
+                  {item.competitor}
+                </td>
+
+                <td className="px-3 py-4 text-xs text-slate-400">
+                  {item.stage}
+                </td>
+
+                <td className="px-3 py-4 text-xs font-semibold text-slate-200">
+                  {formatValue(item.value)}
+                </td>
+
+                <td className="px-3 py-4">
+                  <span
+                    className={`
+                      inline-flex
+                      rounded-full
+                      border
+                      px-2.5
+                      py-1
+                      text-[9px]
+                      font-bold
+                      tracking-wider
+                      ${
+                        item.priority === "HIGH"
+                          ? "border-red-400/30 bg-red-400/10 text-red-300"
+                          : item.priority === "MEDIUM"
+                          ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-300"
+                          : "border-slate-500/30 bg-slate-500/10 text-slate-400"
+                      }
+                    `}
+                  >
+                    {item.priority}
+                  </span>
+                </td>
+
+                <td className="max-w-[240px] px-3 py-4 text-xs leading-5 text-slate-400">
+                  {item.action}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {items.length === 0 && (
+        <div className="rounded-xl border border-[#1F2937] p-6 text-center text-xs text-slate-500">
+          No recovery opportunities match the current filters.
+        </div>
+      )}
+    </section>
+  );
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+</file>
+
+<file path="backend/main.py">
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+
+class Deal(BaseModel):
+    id: str
+    date: str
+    location: str
+    team: str
+    product: str
+    company: str
+    segment: str
+    reason: str
+    competitor: str
+    stage: str
+    value: int
+    priority: str
+    action: str
+
+
+app = FastAPI(
+    title="Lost Deal Recovery API",
+    description="FastAPI backend for the Lost Deal Reason & Recovery Intelligence dashboard.",
+    version="1.0.0",
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+deals = [
+    {
+        "id": "CRM-001",
+        "date": "2026-01-08",
+        "location": "Bengaluru",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Aster Systems",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Salesforce",
+        "stage": "Negotiation",
+        "value": 850000,
+        "priority": "HIGH",
+        "action": "Re-engage with ROI comparison and flexible pricing.",
+    },
+    {
+        "id": "CRM-002",
+        "date": "2026-01-14",
+        "location": "Mumbai",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Nova Retail",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Microsoft",
+        "stage": "Proposal",
+        "value": 720000,
+        "priority": "HIGH",
+        "action": "Review competitor feature gap and schedule executive follow-up.",
+    },
+    {
+        "id": "CRM-003",
+        "date": "2026-01-22",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Analytics Suite",
+        "company": "Bluewave Foods",
+        "segment": "SMB",
+        "reason": "Product Fit",
+        "competitor": "Zoho",
+        "stage": "Evaluation",
+        "value": 280000,
+        "priority": "MEDIUM",
+        "action": "Offer a product-fit workshop and targeted demo.",
+    },
+    {
+        "id": "CRM-004",
+        "date": "2026-02-03",
+        "location": "Chennai",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Orbit Logistics",
+        "segment": "Mid-Market",
+        "reason": "Timing",
+        "competitor": "HubSpot",
+        "stage": "Proposal",
+        "value": 460000,
+        "priority": "MEDIUM",
+        "action": "Create a 60-day re-engagement reminder.",
+    },
+    {
+        "id": "CRM-005",
+        "date": "2026-02-11",
+        "location": "Hyderabad",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Vertex Health",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "AWS",
+        "stage": "Negotiation",
+        "value": 1100000,
+        "priority": "HIGH",
+        "action": "Escalate for commercial review and ROI justification.",
+    },
+    {
+        "id": "CRM-006",
+        "date": "2026-02-18",
+        "location": "Pune",
+        "team": "SMB",
+        "product": "CRM Platform",
+        "company": "Bright Retail",
+        "segment": "SMB",
+        "reason": "Budget",
+        "competitor": "Zoho",
+        "stage": "Qualification",
+        "value": 190000,
+        "priority": "LOW",
+        "action": "Revisit during next budget cycle.",
+    },
+    {
+        "id": "CRM-007",
+        "date": "2026-02-26",
+        "location": "Delhi",
+        "team": "Mid-Market",
+        "product": "Analytics Suite",
+        "company": "Northstar Finance",
+        "segment": "Mid-Market",
+        "reason": "Competitor",
+        "competitor": "Power BI",
+        "stage": "Negotiation",
+        "value": 640000,
+        "priority": "HIGH",
+        "action": "Compare analytics capabilities and migration benefits.",
+    },
+    {
+        "id": "CRM-008",
+        "date": "2026-03-04",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Cloud Platform",
+        "company": "Harbor Tech",
+        "segment": "SMB",
+        "reason": "Product Fit",
+        "competitor": "AWS",
+        "stage": "Evaluation",
+        "value": 230000,
+        "priority": "MEDIUM",
+        "action": "Run a technical discovery session.",
+    },
+    {
+        "id": "CRM-009",
+        "date": "2026-03-12",
+        "location": "Bengaluru",
+        "team": "Enterprise",
+        "product": "CRM Platform",
+        "company": "Zenith Motors",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Salesforce",
+        "stage": "Proposal",
+        "value": 920000,
+        "priority": "HIGH",
+        "action": "Build competitor battlecard and executive outreach.",
+    },
+    {
+        "id": "CRM-010",
+        "date": "2026-03-18",
+        "location": "Mumbai",
+        "team": "Mid-Market",
+        "product": "Analytics Suite",
+        "company": "Urban Living",
+        "segment": "Mid-Market",
+        "reason": "Timing",
+        "competitor": "Tableau",
+        "stage": "Evaluation",
+        "value": 370000,
+        "priority": "MEDIUM",
+        "action": "Schedule future re-engagement based on buying cycle.",
+    },
+    {
+        "id": "CRM-011",
+        "date": "2026-03-25",
+        "location": "Chennai",
+        "team": "SMB",
+        "product": "CRM Platform",
+        "company": "Green Basket",
+        "segment": "SMB",
+        "reason": "Budget",
+        "competitor": "Zoho",
+        "stage": "Qualification",
+        "value": 150000,
+        "priority": "LOW",
+        "action": "Send lower-tier package when budget becomes available.",
+    },
+    {
+        "id": "CRM-012",
+        "date": "2026-04-02",
+        "location": "Hyderabad",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Prime Energy",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Azure",
+        "stage": "Negotiation",
+        "value": 1250000,
+        "priority": "HIGH",
+        "action": "Conduct executive pricing review and ROI analysis.",
+    },
+    {
+        "id": "CRM-013",
+        "date": "2026-04-10",
+        "location": "Pune",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Axis Manufacturing",
+        "segment": "Mid-Market",
+        "reason": "Product Fit",
+        "competitor": "HubSpot",
+        "stage": "Evaluation",
+        "value": 410000,
+        "priority": "MEDIUM",
+        "action": "Map missing requirements and propose configuration.",
+    },
+    {
+        "id": "CRM-014",
+        "date": "2026-04-18",
+        "location": "Delhi",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Summit Bank",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Tableau",
+        "stage": "Negotiation",
+        "value": 980000,
+        "priority": "HIGH",
+        "action": "Present differentiated analytics capabilities.",
+    },
+    {
+        "id": "CRM-015",
+        "date": "2026-04-25",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Cloud Platform",
+        "company": "Coastal Foods",
+        "segment": "SMB",
+        "reason": "Timing",
+        "competitor": "AWS",
+        "stage": "Proposal",
+        "value": 210000,
+        "priority": "LOW",
+        "action": "Place into quarterly recovery campaign.",
+    },
+    {
+        "id": "CRM-016",
+        "date": "2026-05-03",
+        "location": "Bengaluru",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Techline India",
+        "segment": "Mid-Market",
+        "reason": "Price",
+        "competitor": "Salesforce",
+        "stage": "Proposal",
+        "value": 570000,
+        "priority": "HIGH",
+        "action": "Reopen pricing discussion with value-based package.",
+    },
+    {
+        "id": "CRM-017",
+        "date": "2026-05-11",
+        "location": "Mumbai",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Metro Infra",
+        "segment": "Enterprise",
+        "reason": "Budget",
+        "competitor": "Azure",
+        "stage": "Qualification",
+        "value": 690000,
+        "priority": "MEDIUM",
+        "action": "Monitor budget approval and prepare re-entry plan.",
+    },
+    {
+        "id": "CRM-018",
+        "date": "2026-05-19",
+        "location": "Chennai",
+        "team": "SMB",
+        "product": "Analytics Suite",
+        "company": "FreshMart",
+        "segment": "SMB",
+        "reason": "Competitor",
+        "competitor": "Power BI",
+        "stage": "Evaluation",
+        "value": 175000,
+        "priority": "LOW",
+        "action": "Share product comparison and customer proof points.",
+    },
+    {
+        "id": "CRM-019",
+        "date": "2026-05-27",
+        "location": "Hyderabad",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Medix Labs",
+        "segment": "Mid-Market",
+        "reason": "Product Fit",
+        "competitor": "HubSpot",
+        "stage": "Proposal",
+        "value": 520000,
+        "priority": "MEDIUM",
+        "action": "Schedule solution-design workshop.",
+    },
+    {
+        "id": "CRM-020",
+        "date": "2026-06-05",
+        "location": "Pune",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Global Textiles",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Tableau",
+        "stage": "Negotiation",
+        "value": 890000,
+        "priority": "HIGH",
+        "action": "Create executive-level commercial recovery plan.",
+    },
+]
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "Lost Deal Recovery API is running"
+    }
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok"
+    }
+
+
+@app.get("/api/deals", response_model=list[Deal])
+def get_deals():
+    return deals
+</file>
+
+<file path="backend/requirements.txt">
+fastapi
+uvicorn[standard]
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="VAR_REPORT.md">
+# POC-12 — Lost Deal Reason & Recovery Intelligence
+
+# Visualization Audit Review (VAR)
+
+**Role used for review:** Senior UX Architect / Product Reviewer / Design Auditor  
+**Review scope:** Interface consistency, interaction quality, visual identity, readability, dashboard storytelling, responsive behaviour, professional presentation, information hierarchy, accessibility of key controls, and clarity of application purpose.
+
+## Final Status
+
+# VAR PASS
+
+The current POC meets the requested visualization-audit quality gate. No blocking visualization or UX issue was identified that prevents the POC from proceeding to the next quality gate.
+
+---
+
+## 1. Interface Consistency — PASS
+
+- Consistent dark intelligence-terminal visual language.
+- Consistent card borders, backgrounds, spacing, and rounded corners.
+- Consistent compact uppercase analytical labels.
+- Consistent cyan/indigo intelligence accents.
+- Clear typography and spacing hierarchy.
+
+**Result: PASS**
+
+## 2. Interaction Quality — PASS
+
+- Dashboard filters provide direct control over the displayed dataset.
+- Loss-reason chart interactions open the Deal Intelligence panel.
+- Competitor chart interactions open the Deal Intelligence panel.
+- The intelligence panel has close-button and backdrop dismissal.
+- CSV and JSON export controls have clear labels.
+- Application information opens in a dedicated modal.
+
+**Result: PASS**
+
+## 3. Visual Identity — PASS
+
+The interface uses a coherent business-intelligence visual system based on:
+- Deep `#030712` application background
+- `#0B1117` content cards
+- `#38BDF8` primary intelligence accent
+- `#818CF8` secondary accent
+- Dark neutral borders
+- Compact uppercase analytical labels
+- High-contrast KPI values
+
+**Result: PASS**
+
+## 4. Readability — PASS
+
+- KPI values are visually prominent.
+- Supporting descriptions are separated from primary values.
+- Section headings clearly identify each analytical view.
+- Chart labels use muted secondary text.
+- The intelligence panel separates selected signal, context, explanation, intelligence signal, and recommended action.
+- The recovery table presents key deal attributes in a structured layout.
+
+**Result: PASS**
+
+## 5. Dashboard Storytelling — PASS
+
+The dashboard follows a clear analytical flow:
+
+1. Purpose / identity
+2. Data-source context
+3. Filters
+4. Executive KPIs
+5. Loss-reason analysis
+6. Segment concentration
+7. Competitive analysis
+8. Decision support
+9. Recovery opportunities
+10. Data export and KPI definitions
+
+This gives the user a progression from overview → diagnosis → decision support → action.
+
+**Result: PASS**
+
+## 6. Responsive Behaviour — PASS
+
+The implementation uses responsive Tailwind layouts and breakpoint-based sizing, including:
+- Responsive header and container spacing
+- Responsive KPI grid
+- Responsive filter grid
+- Full available chart width
+- Full-width intelligence panel on smaller screens and constrained sidebar on larger screens
+- Responsive dashboard grid breakpoints
+
+**Result: PASS**
+
+## 7. Professional Presentation — PASS
+
+Professional presentation elements include:
+- Clear product title and business-domain subtitle
+- Synthetic-data disclosure
+- KPI definitions and data-quality note
+- Application information modal
+- Developer signature
+- Export controls
+- Structured recovery recommendations
+- Consistent visual treatment
+
+**Result: PASS**
+
+## 8. Information Hierarchy — PASS
+
+The hierarchy is clear:
+
+**Primary:** dashboard title, KPI values, analytical charts  
+**Secondary:** filters, chart explanations, decision support  
+**Action-oriented:** recovery table, recommended actions, exports  
+**Supporting:** data-quality notes, KPI definitions, application information
+
+The Deal Intelligence panel focuses attention on a selected signal without replacing the main dashboard.
+
+**Result: PASS**
+
+## 9. Accessibility of Key Controls — PASS
+
+- Key icon-only controls use `aria-label` text.
+- Interactive controls are visually identifiable.
+- Close controls are clearly positioned.
+- Primary actions use visible text labels where practical.
+- Filter controls include visible focus styling.
+
+**Result: PASS**
+
+## 10. Clear Application Purpose — PASS
+
+The title **LOST DEAL REASON & RECOVERY INTELLIGENCE** clearly communicates the product purpose.
+
+The supporting subtitle **LEADS & CONVERSION • MANAGEMENT INTELLIGENCE** clarifies the business domain.
+
+The dashboard directly supports that purpose through loss-reason analysis, competitor analysis, segment analysis, recovery prioritisation, and recommended actions.
+
+**Result: PASS**
+
+---
+
+# Improvements Reviewed
+
+The current implementation includes:
+
+- POC-specific intelligence dashboard replacing the default Next.js starter page.
+- Reusable dashboard components.
+- Interactive Pareto and competitor visualisations.
+- Deal Intelligence side panel.
+- Contextual explanations and recommended actions.
+- Responsive dashboard layouts.
+- Synthetic-data disclosure.
+- KPI definitions and data-quality information.
+- CSV and JSON export.
+- Application information and developer-signature presentation.
+- Accessible labels for key icon controls.
+- Consistent visual system across the dashboard.
+
+---
+
+# Validation Evidence
+
+## Production Build
+
+The application successfully completed:
+
+```bash
+npm run build
+```
+
+The reported build completed successfully with Next.js production compilation, TypeScript validation, page-data collection, static page generation, and page optimization.
+
+**Build Result: PASS**
+
+## Visual / Interaction Review
+
+The dashboard and Deal Intelligence panel were visually reviewed. The reviewed interface demonstrates working dashboard rendering, analytical charts, filters, intelligence-panel interaction, recovery table, export controls, and coherent visual identity.
+
+**Visual Review Result: PASS**
+
+---
+
+# Non-Blocking Notes
+
+The dataset is explicitly synthetic and is labelled as such within the application.
+
+This VAR review evaluates the POC interface and interaction design. It does not certify the accuracy of external CRM data or business outcomes.
+
+No blocking UX, visualization, or presentation issue remains for the VAR gate.
+
+---
+
+# Final VAR Decision
+
+## VAR PASS ✅
+
+**POC-12 — Lost Deal Reason & Recovery Intelligence**
+
+The application has passed the Visualization Audit Review and is ready to proceed to the next quality gate, subject to the required UAT validation.
+</file>
+
+<file path="vercel.json">
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": "./"
+    },
+    "backend": {
+      "root": "backend/",
+      "entrypoint": "main:app"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
+  ]
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Lost Deal Recovery Intelligence",
+  description:
+    "Infocreon Lost Deal Reason & Recovery Intelligence dashboard.",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "poc-12-lost-deal-recovery",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
+    "lucide-react": "^1.44.0",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="UAT_CHECKLIST.md">
+# POC-12 — Lost Deal Reason & Recovery Intelligence
+
+# Functional User Acceptance Testing (UAT)
+
+**Project:** POC-12 — Leads & Conversion  
+**Application:** Lost Deal Reason & Recovery Intelligence  
+**UAT Status:** **UAT PASS ✅**  
+**Blocking Issues:** None
+
+---
+
+## 1. Scope
+
+The UAT covered:
+
+- Filters
+- Tooltips
+- Loading states
+- User interactions
+- Navigation
+- Responsiveness
+- Edge cases
+- Error handling
+- Data correctness
+- User workflow validation
+- Frontend-to-backend communication
+- Browser refresh behaviour
+- Empty/unavailable data conditions
+- Production build validation
+
+The current POC uses a synthetic CRM dataset served through an active FastAPI backend. The Next.js frontend retrieves the dataset through the `/api/deals` endpoint and performs the dashboard filtering, KPI calculations, chart preparation and recovery intelligence calculations from the returned data.
+
+---
+
+## 2. Test Environment
+
+- Next.js 16.3.4
+- React / Next.js App Router
+- Tailwind CSS
+- Apache ECharts via `echarts-for-react`
+- FastAPI backend
+- Uvicorn
+- Synthetic CRM demonstration dataset
+- Frontend: `http://localhost:3001`
+- Backend: `http://127.0.0.1:8000`
+- API endpoint: `GET /api/deals`
+- Health endpoint: `GET /health`
+- Production build command: `npm run build`
+
+---
+
+## 3. UAT Test Cases
+
+| ID | Test | Expected Result | Result | Evidence |
+|---|---|---|---|---|
+| UAT-001 | Open application | Dashboard loads and clearly communicates its purpose | PASS | Dashboard visual review |
+| UAT-002 | Location filter | Dataset and derived dashboard values update | PASS | Filter logic |
+| UAT-003 | Team filter | Dataset updates | PASS | Filter logic |
+| UAT-004 | Product filter | Dataset updates | PASS | Filter logic |
+| UAT-005 | Segment filter | Dataset updates | PASS | Filter logic |
+| UAT-006 | Loss-reason filter | Dataset updates | PASS | Filter logic |
+| UAT-007 | Priority filter | Dataset updates | PASS | Filter logic |
+| UAT-008 | Combined filters | All active filters are applied together | PASS | `filteredDeals` logic |
+| UAT-009 | KPI recalculation | Lost deals, value, priority count and average update from filtered data | PASS | Derived KPI logic |
+| UAT-010 | Pareto chart | Loss-reason counts and cumulative pattern render | PASS | Dashboard review |
+| UAT-011 | Pareto tooltip | Hover provides chart information | PASS | ECharts tooltip configuration |
+| UAT-012 | Pareto click | Selecting a reason opens Intelligence Panel | PASS | Dashboard interaction |
+| UAT-013 | Segment heatmap | Segment/reason concentration renders | PASS | Dashboard review |
+| UAT-014 | Heatmap tooltip | Hover provides chart information | PASS | ECharts tooltip configuration |
+| UAT-015 | Competitor matrix | Competitor data renders | PASS | Dashboard review |
+| UAT-016 | Competitor tooltip | Hover provides chart information | PASS | ECharts tooltip configuration |
+| UAT-017 | Competitor click | Selecting a competitor opens Intelligence Panel | PASS | Dashboard interaction |
+| UAT-018 | Intelligence Panel | Signal, type, value, context, explanation and action display | PASS | Supplied dashboard screenshot |
+| UAT-019 | Panel close | Close button closes panel | PASS | `onClose` |
+| UAT-020 | Panel backdrop | Backdrop closes panel | PASS | `onClose` |
+| UAT-021 | Recovery table | Lost opportunities and actions display | PASS | Dashboard review |
+| UAT-022 | Recovery ordering | HIGH priority is prioritised, then value | PASS | Sorting logic |
+| UAT-023 | CSV export | Filtered records download as CSV | PASS | `downloadCSV` |
+| UAT-024 | JSON export | Filtered records download as JSON | PASS | `downloadJSON` |
+| UAT-025 | Info modal | Application information opens | PASS | UI implementation |
+| UAT-026 | Info modal close | Modal closes correctly | PASS | UI implementation |
+| UAT-027 | Navigation | Root route `/` loads the dashboard | PASS | Next.js application |
+| UAT-028 | Browser refresh | Root route reloads successfully | PASS | Browser refresh validation |
+| UAT-029 | Responsive layout | Breakpoint layouts adapt to viewport size | PASS | Tailwind responsive classes |
+| UAT-030 | Mobile intelligence panel | Panel becomes full-width on small screens | PASS | Responsive panel classes |
+| UAT-031 | Empty filtered dataset | KPIs safely fall back to zero | PASS | Empty-data logic |
+| UAT-032 | Empty loss reasons | Top reason falls back to `No data` | PASS | Explicit fallback |
+| UAT-033 | Empty competitors | Top competitor falls back to `No data` | PASS | Explicit fallback |
+| UAT-034 | No selected signal | Intelligence Panel does not render | PASS | `if (!selected) return null` |
+| UAT-035 | Missing optional panel data | `Not available` fallback is shown | PASS | Panel fallback handling |
+| UAT-036 | Zero Pareto total | No divide-by-zero condition | PASS | Explicit zero-total guard |
+| UAT-037 | Invalid chart event | Invalid click event is ignored | PASS | Event guards |
+| UAT-038 | Data correctness | KPIs/charts derive from filtered synthetic records | PASS | Derived calculations |
+| UAT-039 | Currency formatting | Values use INR/en-IN formatting | PASS | `Intl.NumberFormat` |
+| UAT-040 | Synthetic-data disclosure | Dataset is clearly identified as synthetic | PASS | Data Source notice |
+| UAT-041 | Loading state | Loading message appears while CRM data is retrieved from FastAPI | PASS | Frontend loading state |
+| UAT-042 | Runtime API errors | API failure displays a clear error message | PASS | `apiError` state |
+| UAT-043 | Frontend/backend communication | Frontend successfully retrieves CRM records from FastAPI `/api/deals` | PASS | FastAPI API validation |
+| UAT-044 | Production build | `npm run build` completes without blocking errors | PASS | Terminal build result |
+
+---
+
+## 4. Filter Validation
+
+All six filters were covered:
+
+1. Location
+2. Team
+3. Product
+4. Segment
+5. Loss Reason
+6. Priority
+
+Multiple filters are applied together through the same filtered dataset, and downstream KPIs, charts and recovery records derive from that result.
+
+**Result: PASS ✅**
+
+---
+
+## 5. Tooltip Validation
+
+ECharts tooltips are configured for:
+
+- Loss-reason Pareto
+- Segment heatmap
+- Competitor matrix
+
+Hover interactions provide contextual chart information without changing the underlying dataset.
+
+**Result: PASS ✅**
+
+---
+
+## 6. Loading and Error Handling
+
+The dashboard loads CRM data asynchronously from the FastAPI backend.
+
+The frontend provides:
+
+- Loading state while CRM data is retrieved.
+- API error message when the backend request fails.
+- Empty-data safeguards for dashboard calculations.
+- Safe fallback handling for unavailable loss reasons and competitors.
+
+**Result: PASS ✅**
+
+---
+
+## 7. User Workflow
+
+Validated workflow:
+
+```text
+Open Dashboard
+→ Review KPIs
+→ Apply Filters
+→ Identify Loss Pattern
+→ Inspect Pareto / Heatmap / Competitor Signal
+→ Open Deal Intelligence
+→ Review Why This Matters
+→ Review Recommended Action
+→ Inspect Recovery Opportunities
+→ Export Filtered Data
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+__pycache__/
+</file>
+
+<file path="README.md">
+# PoC 12 — Lost Deal Reason & Recovery Intelligence
+
+A decision-support dashboard for analysing lost CRM deals, identifying recurring loss reasons and competitive signals, and surfacing recovery-oriented actions.
+
+## Overview
+
+This PoC transforms lost-deal records into an interactive intelligence dashboard.
+
+Users can:
+
+- Analyse lost deals by location, team, product, segment, loss reason, and priority
+- Monitor key recovery and loss indicators
+- Explore loss reasons using analytical charts
+- Analyse customer-segment patterns
+- Review competitive loss signals
+- Open an Intelligence Panel for contextual interpretation
+- Review deal-level recovery information
+- Export dashboard data as CSV and JSON
+
+> **Data note:** This PoC uses a synthetic CRM loss/follow-up dataset for demonstration and decision-support purposes. Company names and records are synthetic.
+
+---
+
+## Key Features
+
+### Dashboard Intelligence
+
+- KPI summary
+- Interactive filtering
+- Loss-reason analysis
+- Segment analysis
+- Competitive analysis
+- Intelligence Panel
+- Recovery recommendations
+- Deal-level recovery table
+
+### User Interactions
+
+- Filter combinations
+- Interactive chart tooltips
+- Chart selection
+- Intelligence Panel
+- Information interface
+- CSV export
+- JSON export
+
+### Responsive Design
+
+The dashboard was tested across:
+
+- Desktop
+- Tablet
+- Mobile
+
+---
+
+## Technology Stack
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Apache ECharts
+- ECharts React integration
+
+---
+
+## Project Structure
+
+```text
+poc-12-lost-deal-recovery/
+│
+├── app/
+│   ├── components/
+│   │   ├── DashboardCharts.tsx
+│   │   ├── DecisionPanel.tsx
+│   │   ├── IntelligencePanel.tsx
+│   │   └── RecoveryTable.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+│
+├── public/
+│
+├── VAR_REPORT.md
+├── UAT_CHECKLIST.md
+├── README.md
+├── package.json
+├── package-lock.json
+└── ...
+## Live Deployment
+
+https://poc-12-lost-deal-recovery.vercel.app/
+</file>
+
+<file path="app/page.tsx">
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  Download,
+  Info,
+  Filter,
+  Database,
+  TrendingDown,
+  IndianRupee,
+  Target,
+  AlertTriangle,
+  X,
+} from "lucide-react";
+
+import DashboardCharts from "./components/DashboardCharts";
+import RecoveryTable from "./components/RecoveryTable";
+import DecisionPanel from "./components/DecisionPanel";
+
+type Deal = {
+  id: string;
+  date: string;
+  location: string;
+  team: string;
+  product: string;
+  company: string;
+  segment: string;
+  reason: string;
+  competitor: string;
+  stage: string;
+  value: number;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  action: string;
+};
+
+const reasonOrder = [
+  "Price",
+  "Competitor",
+  "Product Fit",
+  "Timing",
+  "Budget",
+];
+
+const segmentOrder = [
+  "Enterprise",
+  "Mid-Market",
+  "SMB",
+];
+
+const competitorOrder = [
+  "Salesforce",
+  "Microsoft",
+  "Zoho",
+  "HubSpot",
+  "AWS",
+  "Power BI",
+  "Tableau",
+  "Azure",
+];
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+export default function Home() {
+  const [showInfo, setShowInfo] = useState(false);
+
+  // FastAPI data
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
+
+  // Filters
+  const [locationFilter, setLocationFilter] =
+    useState("ALL");
+
+  const [teamFilter, setTeamFilter] =
+    useState("ALL");
+
+  const [productFilter, setProductFilter] =
+    useState("ALL");
+
+  const [segmentFilter, setSegmentFilter] =
+    useState("ALL");
+
+  const [reasonFilter, setReasonFilter] =
+    useState("ALL");
+
+  const [priorityFilter, setPriorityFilter] =
+    useState("ALL");
+
+  // Load CRM data from FastAPI
+  useEffect(() => {
+    const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL || "";
+
+    fetch(`${apiBaseUrl}/api/deals`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            `API request failed: ${response.status}`
+          );
+        }
+
+        return response.json();
+      })
+      .then((data: Deal[]) => {
+        setDeals(data);
+        setApiError("");
+      })
+      .catch((error) => {
+        console.error(
+          "Failed to load deals:",
+          error
+        );
+
+        setApiError(
+          "Unable to load CRM data from the FastAPI backend."
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const filteredDeals = useMemo(() => {
+    return deals.filter((deal) => {
+      return (
+        (locationFilter === "ALL" ||
+          deal.location === locationFilter) &&
+        (teamFilter === "ALL" ||
+          deal.team === teamFilter) &&
+        (productFilter === "ALL" ||
+          deal.product === productFilter) &&
+        (segmentFilter === "ALL" ||
+          deal.segment === segmentFilter) &&
+        (reasonFilter === "ALL" ||
+          deal.reason === reasonFilter) &&
+        (priorityFilter === "ALL" ||
+          deal.priority === priorityFilter)
+      );
+    });
+  }, [
+    deals,
+    locationFilter,
+    teamFilter,
+    productFilter,
+    segmentFilter,
+    reasonFilter,
+    priorityFilter,
+  ]);
+
+  const totalLost = filteredDeals.length;
+
+  const totalValue = filteredDeals.reduce(
+    (sum, deal) => sum + deal.value,
+    0
+  );
+
+  const highPriority = filteredDeals.filter(
+    (deal) => deal.priority === "HIGH"
+  ).length;
+
+  const averageDealValue =
+    totalLost > 0
+      ? totalValue / totalLost
+      : 0;
+
+  const lossReasons = reasonOrder
+    .map((reason) => ({
+      reason,
+      count: filteredDeals.filter(
+        (deal) => deal.reason === reason
+      ).length,
+    }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  const topReason =
+    lossReasons[0]?.reason ?? "No data";
+
+  const competitorCounts = competitorOrder
+    .map((competitor) => {
+      const losses = filteredDeals.filter(
+        (deal) =>
+          deal.competitor === competitor
+      ).length;
+
+      return {
+        competitor,
+        wins: 0,
+        losses,
+      };
+    })
+    .filter((item) => item.losses > 0);
+
+  const topCompetitor =
+    competitorCounts.length > 0
+      ? [...competitorCounts].sort(
+          (a, b) => b.losses - a.losses
+        )[0].competitor
+      : "No data";
+
+  const segments = segmentOrder.flatMap(
+    (segment) =>
+      reasonOrder.map((reason) => ({
+        segment,
+        reason,
+        value: filteredDeals.filter(
+          (deal) =>
+            deal.segment === segment &&
+            deal.reason === reason
+        ).length,
+      }))
+  );
+
+  const recoveryItems = [...filteredDeals]
+    .sort((a, b) => {
+      const priorityRank = {
+        HIGH: 3,
+        MEDIUM: 2,
+        LOW: 1,
+      };
+
+      return (
+        priorityRank[b.priority] -
+          priorityRank[a.priority] ||
+        b.value - a.value
+      );
+    })
+    .map((deal) => ({
+      id: deal.id,
+      company: deal.company,
+      reason: deal.reason,
+      competitor: deal.competitor,
+      stage: deal.stage,
+      value: deal.value,
+      priority: deal.priority,
+      action: deal.action,
+    }));
+
+  const downloadJSON = () => {
+    const blob = new Blob(
+      [JSON.stringify(filteredDeals, null, 2)],
+      {
+        type: "application/json",
+      }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download =
+      "lost-deal-recovery-data.json";
+
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCSV = () => {
+    const headers = [
+      "ID",
+      "Date",
+      "Location",
+      "Team",
+      "Product",
+      "Company",
+      "Segment",
+      "Loss Reason",
+      "Competitor",
+      "Stage",
+      "Value",
+      "Priority",
+      "Recommended Action",
+    ];
+
+    const rows = filteredDeals.map((deal) => [
+      deal.id,
+      deal.date,
+      deal.location,
+      deal.team,
+      deal.product,
+      deal.company,
+      deal.segment,
+      deal.reason,
+      deal.competitor,
+      deal.stage,
+      deal.value,
+      deal.priority,
+      deal.action,
+    ]);
+
+    const csv = [
+      headers,
+      ...rows,
+    ]
+      .map((row) =>
+        row
+          .map((value) =>
+            `"${String(value).replaceAll(
+              '"',
+              '""'
+            )}"`
+          )
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download =
+      "lost-deal-recovery-data.csv";
+
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <main className="min-h-screen bg-[#030712] text-slate-100">
+
+      {/* API STATUS */}
+
+      {loading && (
+        <div className="border-b border-[#38BDF8]/20 bg-[#38BDF8]/5 px-5 py-3 text-center text-xs text-[#38BDF8]">
+          Loading CRM intelligence from FastAPI...
+        </div>
+      )}
+
+      {apiError && (
+        <div className="border-b border-red-400/20 bg-red-400/5 px-5 py-3 text-center text-xs text-red-300">
+          {apiError}
+        </div>
+      )}
+
+      {/* HEADER */}
+
+      <header className="sticky top-0 z-50 border-b border-[#1F2937] bg-[#030712]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-5 py-4 lg:px-8">
+          <div>
+            <div className="text-[9px] font-semibold tracking-[0.35em] text-[#38BDF8]">
+              INFOCREON INTERNSHIP • BUSINESS INTELLIGENCE
+            </div>
+
+            <h1 className="mt-1 text-xl font-bold tracking-wide sm:text-2xl">
+              LOST DEAL REASON & RECOVERY INTELLIGENCE
+            </h1>
+
+            <p className="mt-1 text-[9px] tracking-[0.25em] text-slate-500">
+              LEADS & CONVERSION • MANAGEMENT INTELLIGENCE
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowInfo(true)}
+            aria-label="Application information"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#38BDF8]/30 bg-[#38BDF8]/10 text-[#38BDF8] transition hover:bg-[#38BDF8]/20"
+          >
+            <Info className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[1600px] px-5 py-6 lg:px-8">
+
+        {/* SOURCE NOTE */}
+
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#38BDF8]/15 bg-[#38BDF8]/5 p-4">
+          <Database className="mt-0.5 h-4 w-4 shrink-0 text-[#38BDF8]" />
+
+          <div>
+            <div className="text-[9px] font-semibold tracking-widest text-[#38BDF8]">
+              DATA SOURCE
+            </div>
+
+            <p className="mt-1 text-xs leading-5 text-slate-400">
+              Synthetic CRM loss and follow-up dataset
+              served through the FastAPI backend for
+              demonstration and decision-support purposes.
+              Company names and records shown here are
+              synthetic and must not be interpreted as real
+              company data.
+            </p>
+          </div>
+        </div>
+
+        {/* FILTER BAR */}
+
+        <section className="mb-6 rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <Filter className="h-4 w-4 text-[#38BDF8]" />
+
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              INTELLIGENCE FILTERS
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+
+            {[
+              {
+                label: "LOCATION",
+                value: locationFilter,
+                setValue: setLocationFilter,
+                options: [
+                  "ALL",
+                  "Bengaluru",
+                  "Mumbai",
+                  "Kochi",
+                  "Chennai",
+                  "Hyderabad",
+                  "Pune",
+                  "Delhi",
+                ],
+              },
+              {
+                label: "TEAM",
+                value: teamFilter,
+                setValue: setTeamFilter,
+                options: [
+                  "ALL",
+                  "Enterprise",
+                  "Mid-Market",
+                  "SMB",
+                ],
+              },
+              {
+                label: "PRODUCT",
+                value: productFilter,
+                setValue: setProductFilter,
+                options: [
+                  "ALL",
+                  "Analytics Suite",
+                  "Cloud Platform",
+                  "CRM Platform",
+                ],
+              },
+              {
+                label: "SEGMENT",
+                value: segmentFilter,
+                setValue: setSegmentFilter,
+                options: [
+                  "ALL",
+                  "Enterprise",
+                  "Mid-Market",
+                  "SMB",
+                ],
+              },
+              {
+                label: "LOSS REASON",
+                value: reasonFilter,
+                setValue: setReasonFilter,
+                options: [
+                  "ALL",
+                  ...reasonOrder,
+                ],
+              },
+              {
+                label: "PRIORITY",
+                value: priorityFilter,
+                setValue: setPriorityFilter,
+                options: [
+                  "ALL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                ],
+              },
+            ].map((filter) => (
+              <label key={filter.label}>
+                <div className="mb-1.5 text-[8px] tracking-widest text-slate-500">
+                  {filter.label}
+                </div>
+
+                <select
+                  value={filter.value}
+                  onChange={(event) =>
+                    filter.setValue(
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-lg border border-[#1F2937] bg-[#030712] px-3 py-2.5 text-xs text-slate-200 outline-none transition focus:border-[#38BDF8]/50"
+                >
+                  {filter.options.map((option) => (
+                    <option
+                      key={option}
+                      value={option}
+                    >
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+
+          </div>
+        </section>
+
+        {/* KPI GRID */}
+
+        <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
+          <div className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-5">
+            <div className="flex items-center gap-2 text-[9px] tracking-widest text-slate-500">
+              <TrendingDown className="h-4 w-4 text-[#38BDF8]" />
+              LOST DEALS
+            </div>
+
+            <div className="mt-3 text-3xl font-bold">
+              {totalLost}
+            </div>
+
+            <div className="mt-1 text-[10px] text-slate-500">
+              Filtered opportunities
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-5">
+            <div className="flex items-center gap-2 text-[9px] tracking-widest text-slate-500">
+              <IndianRupee className="h-4 w-4 text-[#38BDF8]" />
+              PIPELINE VALUE LOST
+            </div>
+
+            <div className="mt-3 text-2xl font-bold">
+              {formatCurrency(totalValue)}
+            </div>
+
+            <div className="mt-1 text-[10px] text-slate-500">
+              Total value of lost opportunities
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-5">
+            <div className="flex items-center gap-2 text-[9px] tracking-widest text-slate-500">
+              <AlertTriangle className="h-4 w-4 text-red-300" />
+              HIGH PRIORITY
+            </div>
+
+            <div className="mt-3 text-3xl font-bold text-red-300">
+              {highPriority}
+            </div>
+
+            <div className="mt-1 text-[10px] text-slate-500">
+              Opportunities requiring action
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-5">
+            <div className="flex items-center gap-2 text-[9px] tracking-widest text-slate-500">
+              <Target className="h-4 w-4 text-[#818CF8]" />
+              AVG DEAL VALUE
+            </div>
+
+            <div className="mt-3 text-2xl font-bold">
+              {formatCurrency(
+                averageDealValue
+              )}
+            </div>
+
+            <div className="mt-1 text-[10px] text-slate-500">
+              Average lost opportunity value
+            </div>
+          </div>
+
+        </section>
+
+        {/* CHARTS */}
+
+        <section className="mb-6">
+          <DashboardCharts
+            lossReasons={lossReasons}
+            segments={segments}
+            competitors={competitorCounts}
+          />
+        </section>
+
+        {/* DECISION SUPPORT */}
+
+        <section className="mb-6">
+          <DecisionPanel
+            totalLost={totalLost}
+            totalValue={totalValue}
+            highPriority={highPriority}
+            topReason={topReason}
+            topCompetitor={topCompetitor}
+          />
+        </section>
+
+        {/* RECOVERY TABLE */}
+
+        <section className="mb-6">
+          <RecoveryTable items={recoveryItems} />
+        </section>
+
+        {/* DOWNLOADS + DATA QUALITY */}
+
+        <section className="grid gap-5 lg:grid-cols-2">
+
+          <div className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-5">
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              EXPORT DATA
+            </div>
+
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              Download the currently filtered synthetic
+              CRM dataset for further analysis.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+
+              <button
+                onClick={downloadCSV}
+                className="flex items-center gap-2 rounded-lg border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-4 py-3 text-[10px] font-semibold tracking-widest text-[#38BDF8] transition hover:bg-[#38BDF8]/20"
+              >
+                <Download className="h-4 w-4" />
+                DOWNLOAD CSV
+              </button>
+
+              <button
+                onClick={downloadJSON}
+                className="flex items-center gap-2 rounded-lg border border-[#818CF8]/30 bg-[#818CF8]/10 px-4 py-3 text-[10px] font-semibold tracking-widest text-[#818CF8] transition hover:bg-[#818CF8]/20"
+              >
+                <Download className="h-4 w-4" />
+                DOWNLOAD JSON
+              </button>
+
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-5">
+
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              SOURCE QUALITY & KPI DEFINITIONS
+            </div>
+
+            <div className="mt-4 space-y-3 text-xs leading-5 text-slate-400">
+
+              <p>
+                <strong className="text-slate-200">
+                  Lost Deals:
+                </strong>{" "}
+                Count of opportunities classified as
+                closed-lost in the synthetic CRM dataset.
+              </p>
+
+              <p>
+                <strong className="text-slate-200">
+                  Pipeline Value Lost:
+                </strong>{" "}
+                Sum of opportunity values associated with
+                filtered lost deals.
+              </p>
+
+              <p>
+                <strong className="text-slate-200">
+                  High Priority:
+                </strong>{" "}
+                Lost opportunities marked HIGH based on
+                value, buyer stage and recoverability.
+              </p>
+
+              <p>
+                <strong className="text-slate-200">
+                  Data Quality:
+                </strong>{" "}
+                Synthetic demonstration records are
+                intentionally labelled and should not be
+                treated as verified Companies House or GLEIF
+                records.
+              </p>
+
+            </div>
+          </div>
+
+        </section>
+
+        {/* FOOTER */}
+
+        <footer className="mt-8 border-t border-[#1F2937] py-6">
+          <div className="flex flex-col justify-between gap-3 text-[9px] tracking-widest text-slate-600 sm:flex-row">
+
+            <span>
+              REAL RAILS BUSINESS INTELLIGENCE LIBRARY
+            </span>
+
+            <span>
+              POC-12 • LEADS & CONVERSION
+            </span>
+
+          </div>
+        </footer>
+
+      </div>
+
+      {/* INFO MODAL */}
+
+      {showInfo && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setShowInfo(false)}
+        >
+
+          <div
+            className="w-full max-w-md rounded-2xl border border-[#38BDF8]/25 bg-[#070D14] p-6 shadow-2xl"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+
+            <div className="flex items-start justify-between">
+
+              <div>
+
+                <div className="text-[9px] tracking-[0.3em] text-[#38BDF8]">
+                  APPLICATION INFORMATION
+                </div>
+
+                <h2 className="mt-2 text-xl font-bold">
+                  Lost Deal Reason & Recovery Intelligence
+                </h2>
+
+              </div>
+
+              <button
+                onClick={() => setShowInfo(false)}
+                aria-label="Close information"
+                className="text-slate-400 transition hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+            </div>
+
+            <p className="mt-5 text-sm leading-6 text-slate-400">
+              A production-style business intelligence
+              dashboard focused on lost opportunities,
+              competitive patterns and targeted recovery
+              actions.
+            </p>
+
+            <div className="mt-5 rounded-xl border border-[#1F2937] bg-[#030712] p-4">
+
+              <div className="text-[9px] tracking-widest text-slate-500">
+                DEVELOPER SIGNATURE
+              </div>
+
+              <div className="mt-3 text-sm font-semibold">
+                Architect: Diyamol Jose
+              </div>
+
+              <div className="mt-2 text-xs text-slate-400">
+                Batch: Batch 8 / MA College
+              </div>
+
+              <div className="mt-2 text-xs leading-5 text-slate-400">
+                Stack: Next.js, FastAPI, Tailwind CSS,
+                Apache ECharts
+              </div>
+
+              <div className="mt-2 text-xs text-slate-400">
+                PoC ID: 12
+              </div>
+
+              <div className="mt-2 text-xs text-slate-400">
+                GitHub: @diyamol123
+              </div>
+
+              <div className="mt-3 text-[9px] tracking-widest text-[#38BDF8]">
+                INFOCREON INTERNSHIP
+              </div>
+
+            </div>
+
+            <button
+              onClick={() => setShowInfo(false)}
+              className="mt-5 w-full rounded-lg border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-4 py-3 text-xs font-semibold tracking-widest text-[#38BDF8] transition hover:bg-[#38BDF8]/20"
+            >
+              CLOSE
+            </button>
+
+          </div>
+
+        </div>
+      )}
+
+    </main>
+  );
+}
+</file>
+
+</files>
