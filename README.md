@@ -150,7 +150,5 @@ poc-12-lost-deal-recovery/
 ├── next.config.ts
 ├── vercel.json
 │
-├── VAR_REPORT.md
-├── UAT_CHECKLIST.md
 ├── README.md
 └── ...
