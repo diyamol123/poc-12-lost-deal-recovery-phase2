@@ -1,3 +1,4 @@
+cat > README.md <<'EOF'
 # PoC 12 — Lost Deal Reason & Recovery Intelligence
 
 A decision-support dashboard for analysing lost CRM deals, identifying recurring loss reasons and competitive signals, and surfacing recovery-oriented actions.
@@ -18,6 +19,24 @@ Users can:
 - Export dashboard data as CSV and JSON
 
 > **Data note:** This PoC uses a synthetic CRM loss/follow-up dataset for demonstration and decision-support purposes. Company names and records are synthetic.
+
+---
+
+## Phase 2 — Containerization
+
+Phase 2 extends the Lost Deal Recovery intelligence dashboard with a containerized application architecture.
+
+The application includes:
+
+- Next.js frontend
+- FastAPI backend
+- Docker containerization
+- Docker Compose orchestration
+- Frontend-to-backend API communication
+- Separate frontend and backend services
+- Container-ready configuration for local deployment and validation
+
+The Phase 2 setup packages the application components into reproducible services so that the dashboard and API can be run together using Docker Compose.
 
 ---
 
@@ -44,9 +63,31 @@ Users can:
 - CSV export
 - JSON export
 
+### Backend Intelligence API
+
+The FastAPI backend provides the application API layer for the dashboard.
+
+Backend components include:
+
+- FastAPI application
+- Hot/deal intelligence API endpoints
+- Backend requirements configuration
+- Frontend-to-backend communication
+
+### Containerization
+
+Phase 2 includes:
+
+- Frontend Dockerfile
+- Backend Dockerfile
+- Docker Compose configuration
+- Docker ignore configuration
+- Container service networking
+- API proxy configuration
+
 ### Responsive Design
 
-The dashboard was tested across:
+The dashboard is designed for:
 
 - Desktop
 - Tablet
@@ -56,6 +97,8 @@ The dashboard was tested across:
 
 ## Technology Stack
 
+### Frontend
+
 - Next.js
 - React
 - TypeScript
@@ -63,12 +106,23 @@ The dashboard was tested across:
 - Apache ECharts
 - ECharts React integration
 
+### Backend
+
+- Python
+- FastAPI
+
+### Containerization
+
+- Docker
+- Docker Compose
+
 ---
 
 ## Project Structure
 
 ```text
 poc-12-lost-deal-recovery/
+
 │
 ├── app/
 │   ├── components/
@@ -80,14 +134,23 @@ poc-12-lost-deal-recovery/
 │   ├── layout.tsx
 │   └── page.tsx
 │
+├── backend/
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── ...
+│
 ├── public/
+│
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
+├── package.json
+├── package-lock.json
+├── next.config.ts
+├── vercel.json
 │
 ├── VAR_REPORT.md
 ├── UAT_CHECKLIST.md
 ├── README.md
-├── package.json
-├── package-lock.json
 └── ...
-## Live Deployment
-
-https://poc-12-lost-deal-recovery.vercel.app/
