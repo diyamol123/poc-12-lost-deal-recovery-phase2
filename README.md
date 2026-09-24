@@ -1,11 +1,10 @@
-cat > README.md <<'EOF'
 # PoC 12 — Lost Deal Reason & Recovery Intelligence
 
 A decision-support dashboard for analysing lost CRM deals, identifying recurring loss reasons and competitive signals, and surfacing recovery-oriented actions.
 
 ## Overview
 
-This PoC transforms lost-deal records into an interactive intelligence dashboard.
+This PoC transforms lost-deal CRM records into an interactive intelligence dashboard.
 
 Users can:
 
@@ -34,9 +33,10 @@ The application includes:
 - Docker Compose orchestration
 - Frontend-to-backend API communication
 - Separate frontend and backend services
-- Container-ready configuration for local deployment and validation
+- Container service networking
+- Next.js API proxy configuration
 
-The Phase 2 setup packages the application components into reproducible services so that the dashboard and API can be run together using Docker Compose.
+The application can be built and run locally as a multi-container system using Docker Compose.
 
 ---
 
@@ -65,14 +65,15 @@ The Phase 2 setup packages the application components into reproducible services
 
 ### Backend Intelligence API
 
-The FastAPI backend provides the application API layer for the dashboard.
+The FastAPI backend provides the API layer for the dashboard.
 
-Backend components include:
+Available endpoints include:
 
-- FastAPI application
-- Hot/deal intelligence API endpoints
-- Backend requirements configuration
-- Frontend-to-backend communication
+- `GET /`
+- `GET /health`
+- `GET /api/deals`
+
+The frontend accesses the backend through the Next.js API proxy.
 
 ### Containerization
 
@@ -110,6 +111,7 @@ The dashboard is designed for:
 
 - Python
 - FastAPI
+- Uvicorn
 
 ### Containerization
 
@@ -123,7 +125,6 @@ The dashboard is designed for:
 ```text
 poc-12-lost-deal-recovery/
 
-│
 ├── app/
 │   ├── components/
 │   │   ├── DashboardCharts.tsx
@@ -137,8 +138,7 @@ poc-12-lost-deal-recovery/
 ├── backend/
 │   ├── main.py
 │   ├── requirements.txt
-│   ├── Dockerfile
-│   └── ...
+│   └── Dockerfile
 │
 ├── public/
 │
@@ -149,6 +149,4 @@ poc-12-lost-deal-recovery/
 ├── package-lock.json
 ├── next.config.ts
 ├── vercel.json
-│
-├── README.md
-└── ...
+└── README.md
