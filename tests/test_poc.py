@@ -156,12 +156,19 @@ def test_backend_communication(driver):
 
 
 def test_intelligence_panel(driver):
-    canvases = WebDriverWait(driver, TIMEOUT).until(
-        lambda d: d.find_elements(By.TAG_NAME, "canvas")
+    chart = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (By.CSS_SELECTOR, '[data-testid="loss-reason-chart"]')
+        )
     )
 
-    # Scroll the first chart into the visible browser area.
-    canvas = canvases[0]
+    canvas = chart.find_element(By.TAG_NAME, "canvas")
+
+    # Scroll the loss-reason Pareto chart into the visible browser area.
+    driver.execute_script(
+        "arguments[0].scrollIntoView({block: 'center', inline: 'center'});",
+        chart,
+    )
     driver.execute_script(
         "arguments[0].scrollIntoView({block: 'center', inline: 'center'});",
         canvas,
@@ -181,26 +188,17 @@ def test_intelligence_panel(driver):
         canvas,
     )
 
-    x = rect["left"] + rect["width"] / 2
-    y = rect["top"] + rect["height"] / 2
+    # Selenium offsets are measured from the center of the element.
+    from selenium.webdriver.common.action_chains import ActionChains
 
-    driver.execute_script(
-        """
-        const element = arguments[0];
-        const x = arguments[1];
-        const y = arguments[2];
+    offset_x = int(rect["width"] * (0.14 - 0.50))
+    offset_y = int(rect["height"] * (0.55 - 0.50))
 
-        element.dispatchEvent(new MouseEvent("click", {
-            bubbles: true,
-            cancelable: true,
-            clientX: x,
-            clientY: y
-        }));
-        """,
+    ActionChains(driver).move_to_element_with_offset(
         canvas,
-        x,
-        y,
-    )
+        offset_x,
+        offset_y,
+    ).click().perform()
 
     try:
         panel_close = WebDriverWait(driver, 8).until(
@@ -292,9 +290,37 @@ def test_responsive_viewport(driver):
         )
     )
 
-    no_horizontal_overflow = driver.execute_script(
-        "return document.documentElement.scrollWidth <= window.innerWidth + 2;"
+    overflow_info = driver.execute_script(
+        """
+        const elements = [...document.querySelectorAll("body *")];
+        const overflowing = elements
+          .filter(el => {
+              const r = el.getBoundingClientRect();
+              return r.right > window.innerWidth + 2;
+          })
+          .slice(0, 10)
+          .map(el => ({
+              tag: el.tagName,
+              className: String(el.className).slice(0, 120),
+              text: (el.innerText || "").trim().slice(0, 80),
+              right: Math.round(el.getBoundingClientRect().right),
+              width: Math.round(el.getBoundingClientRect().width),
+              outerHTML: el.outerHTML.slice(0, 300)
+          }));
+        return {
+            scrollWidth: document.documentElement.scrollWidth,
+            viewportWidth: window.innerWidth,
+            overflowing
+        };
+        """
     )
+
+    no_horizontal_overflow = (
+        overflow_info["scrollWidth"] <= overflow_info["viewportWidth"] + 2
+    )
+
+    if not no_horizontal_overflow:
+        print(f"       Responsive debug: {overflow_info}")
 
     record(
         "Responsive mobile viewport",
