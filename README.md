@@ -19,6 +19,8 @@ Users can:
 
 > **Data note:** This PoC uses a synthetic CRM loss/follow-up dataset for demonstration and decision-support purposes. Company names and records are synthetic.
 
+**Live Deployment (Phase 2):** https://poc-12-lost-deal-recovery-phase2.onrender.com/
+
 ---
 
 ## Phase 2 — Containerization
