@@ -41,6 +41,9 @@ The content is organized as follows:
 
 <directory_structure>
 app/
+  api/
+    deals/
+      route.ts
   components/
     DashboardCharts.tsx
     DecisionPanel.tsx
@@ -60,6 +63,15 @@ public/
   next.svg
   vercel.svg
   window.svg
+screenshots/
+  selenium_e2e.png
+  selenium_test_execution.png
+test-results/
+  selenium_e2e.png
+  Test_Report.txt
+tests/
+  test_live_application.py
+  test_poc.py
 .dockerignore
 .gitignore
 AGENTS.md
@@ -71,575 +83,48 @@ next.config.ts
 package.json
 postcss.config.mjs
 README.md
+SELENIUM_TEST_REPORT.md
 tsconfig.json
-UAT_CHECKLIST.md
-VAR_REPORT.md
 vercel.json
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="app/components/DashboardCharts.tsx">
-"use client";
-
-import { useState } from "react";
-import ReactECharts from "echarts-for-react";
-import IntelligencePanel from "./IntelligencePanel";
-
-type ChartProps = {
-  lossReasons: {
-    reason: string;
-    count: number;
-  }[];
-
-  segments: {
-    segment: string;
-    reason: string;
-    value: number;
-  }[];
-
-  competitors: {
-    competitor: string;
-    wins: number;
-    losses: number;
-  }[];
-};
-
-type SelectedSignal = {
-  type: "reason" | "competitor";
-  title: string;
-  value?: number;
-  secondary?: string;
-  tertiary?: string;
-  description?: string;
-  action?: string;
-};
-
-export default function DashboardCharts({
-  lossReasons,
-  segments,
-  competitors,
-}: ChartProps) {
-  const [selected, setSelected] =
-    useState<SelectedSignal | null>(null);
-
-  /* ---------------- LOSS REASON PARETO ---------------- */
-
-  const paretoLabels = lossReasons.map(
-    (item) => item.reason
-  );
-
-  const paretoValues = lossReasons.map(
-    (item) => item.count
-  );
-
-  const total = paretoValues.reduce(
-    (sum, value) => sum + value,
-    0
-  );
-
-  let running = 0;
-
-  const cumulative = paretoValues.map((value) => {
-    running += value;
-
-    return total > 0
-      ? Math.round((running / total) * 100)
-      : 0;
-  });
-
-  const paretoOption = {
-    backgroundColor: "transparent",
-
-    tooltip: {
-      trigger: "axis",
-    },
-
-    grid: {
-      left: 45,
-      right: 45,
-      top: 35,
-      bottom: 70,
-    },
-
-    xAxis: {
-      type: "category",
-      data: paretoLabels,
-
-      axisLabel: {
-        color: "#94a3b8",
-        rotate: 25,
-        fontSize: 10,
-      },
-
-      axisLine: {
-        lineStyle: {
-          color: "#1f2937",
-        },
-      },
-    },
-
-    yAxis: [
-      {
-        type: "value",
-        name: "Deals",
-
-        nameTextStyle: {
-          color: "#64748b",
-        },
-
-        axisLabel: {
-          color: "#64748b",
-        },
-
-        splitLine: {
-          lineStyle: {
-            color: "#1f2937",
-          },
-        },
-      },
-
-      {
-        type: "value",
-        name: "%",
-
-        min: 0,
-        max: 100,
-
-        axisLabel: {
-          color: "#64748b",
-        },
-
-        splitLine: {
-          show: false,
-        },
-      },
-    ],
-
-    series: [
-      {
-        name: "Lost Deals",
-        type: "bar",
-        data: paretoValues,
-
-        barMaxWidth: 36,
-
-        itemStyle: {
-          color: "#38bdf8",
-          borderRadius: [5, 5, 0, 0],
-        },
-      },
-
-      {
-        name: "Cumulative",
-        type: "line",
-
-        yAxisIndex: 1,
-        data: cumulative,
-
-        smooth: true,
-
-        symbol: "circle",
-        symbolSize: 6,
-
-        itemStyle: {
-          color: "#818cf8",
-        },
-
-        lineStyle: {
-          width: 2,
-          color: "#818cf8",
-        },
-      },
-    ],
-  };
-
-  /* ---------------- SEGMENT HEATMAP ---------------- */
-
-  const segmentLabels = [
-    ...new Set(
-      segments.map((item) => item.segment)
-    ),
-  ];
-
-  const reasonLabels = [
-    ...new Set(
-      segments.map((item) => item.reason)
-    ),
-  ];
-
-  const heatmapData = segments.map((item) => {
-    const x = segmentLabels.indexOf(item.segment);
-    const y = reasonLabels.indexOf(item.reason);
-
-    return [x, y, item.value];
-  });
-
-  const heatmapMax =
-    segments.length > 0
-      ? Math.max(
-          1,
-          ...segments.map((item) => item.value)
-        )
-      : 1;
-
-  const heatmapOption = {
-    backgroundColor: "transparent",
-
-    tooltip: {
-      position: "top",
-
-      formatter: (params: {
-        data: [number, number, number];
-      }) => {
-        const [x, y, value] = params.data;
-
-        return `
-          <div>
-            <strong>${segmentLabels[x]}</strong><br/>
-            ${reasonLabels[y]}<br/>
-            Lost deals: ${value}
-          </div>
-        `;
-      },
-    },
-
-    grid: {
-      left: 95,
-      right: 20,
-      top: 20,
-      bottom: 55,
-    },
-
-    xAxis: {
-      type: "category",
-      data: segmentLabels,
-
-      axisLabel: {
-        color: "#94a3b8",
-        fontSize: 10,
-      },
-
-      axisLine: {
-        lineStyle: {
-          color: "#1f2937",
-        },
-      },
-    },
-
-    yAxis: {
-      type: "category",
-      data: reasonLabels,
-
-      axisLabel: {
-        color: "#94a3b8",
-        fontSize: 9,
-      },
-
-      axisLine: {
-        lineStyle: {
-          color: "#1f2937",
-        },
-      },
-    },
-
-    visualMap: {
-      min: 0,
-      max: heatmapMax,
-
-      calculable: true,
-
-      orient: "horizontal",
-      left: "center",
-      bottom: 0,
-
-      textStyle: {
-        color: "#64748b",
-      },
-    },
-
-    series: [
-      {
-        type: "heatmap",
-        data: heatmapData,
-
-        label: {
-          show: true,
-          color: "#e2e8f0",
-          fontSize: 10,
-        },
-
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowColor:
-              "rgba(56,189,248,.5)",
-          },
-        },
-      },
-    ],
-  };
-
-  /* ---------------- COMPETITOR MATRIX ---------------- */
-
-  const competitorOption = {
-    backgroundColor: "transparent",
-
-    tooltip: {
-      trigger: "axis",
-    },
-
-    legend: {
-      textStyle: {
-        color: "#94a3b8",
-      },
-    },
-
-    grid: {
-      left: 45,
-      right: 20,
-      top: 50,
-      bottom: 55,
-    },
-
-    xAxis: {
-      type: "category",
-
-      data: competitors.map(
-        (item) => item.competitor
-      ),
-
-      axisLabel: {
-        color: "#94a3b8",
-        fontSize: 10,
-        rotate: 20,
-      },
-
-      axisLine: {
-        lineStyle: {
-          color: "#1f2937",
-        },
-      },
-    },
-
-    yAxis: {
-      type: "value",
-
-      axisLabel: {
-        color: "#64748b",
-      },
-
-      splitLine: {
-        lineStyle: {
-          color: "#1f2937",
-        },
-      },
-    },
-
-    series: [
-      {
-        name: "Wins",
-        type: "bar",
-
-        data: competitors.map(
-          (item) => item.wins
-        ),
-
-        itemStyle: {
-          color: "#38bdf8",
-          borderRadius: [4, 4, 0, 0],
-        },
-      },
-
-      {
-        name: "Losses",
-        type: "bar",
-
-        data: competitors.map(
-          (item) => item.losses
-        ),
-
-        itemStyle: {
-          color: "#818cf8",
-          borderRadius: [4, 4, 0, 0],
-        },
-      },
-    ],
-  };
-
-  return (
-    <>
-      <div className="space-y-5">
-
-        {/* ================= PARETO ================= */}
-
-        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
-
-          <div className="mb-3">
-            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
-              LOSS-REASON PARETO
-            </div>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Identifies the loss reasons contributing most
-              to missed opportunities. Click a reason for
-              intelligence.
-            </p>
-          </div>
-
-          <ReactECharts
-            option={paretoOption}
-            style={{
-              height: 300,
-              width: "100%",
-            }}
-            opts={{
-              renderer: "canvas",
-            }}
-            onEvents={{
-              click: (params: {
-                seriesType?: string;
-                dataIndex?: number;
-              }) => {
-                if (
-                  params.seriesType !== "bar" ||
-                  params.dataIndex === undefined
-                ) {
-                  return;
-                }
-
-                const item =
-                  lossReasons[params.dataIndex];
-
-                if (!item) return;
-
-                setSelected({
-                  type: "reason",
-                  title: item.reason,
-                  value: item.count,
-
-                  secondary:
-                    `${item.count} lost deals`,
-
-                  tertiary:
-                    "Loss Reason",
-
-                  description:
-                    `The loss reason "${item.reason}" contributes ${item.count} lost opportunities in the current filtered dataset. Management should investigate whether this pattern can be addressed through pricing, product fit, positioning or follow-up improvements.`,
-
-                  action:
-                    "Review the affected deals, identify recurring buyer objections and prioritize high-value opportunities where this loss reason may be recoverable.",
-                });
-              },
-            }}
-          />
-
-        </section>
-
-        {/* ================= HEATMAP ================= */}
-
-        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
-
-          <div className="mb-3">
-            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
-              SEGMENT HEATMAP
-            </div>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Shows where specific loss reasons are
-              concentrated.
-            </p>
-          </div>
-
-          <ReactECharts
-            option={heatmapOption}
-            style={{
-              height: 300,
-              width: "100%",
-            }}
-            opts={{
-              renderer: "canvas",
-            }}
-          />
-
-        </section>
-
-        {/* ================= COMPETITOR ================= */}
-
-        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
-
-          <div className="mb-3">
-            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
-              COMPETITOR MATRIX
-            </div>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Compares competitive wins and losses. Click a
-              competitor for intelligence.
-            </p>
-          </div>
-
-          <ReactECharts
-            option={competitorOption}
-            style={{
-              height: 300,
-              width: "100%",
-            }}
-            opts={{
-              renderer: "canvas",
-            }}
-            onEvents={{
-              click: (params: {
-                seriesType?: string;
-                dataIndex?: number;
-              }) => {
-                if (
-                  params.seriesType !== "bar" ||
-                  params.dataIndex === undefined
-                ) {
-                  return;
-                }
-
-                const item =
-                  competitors[params.dataIndex];
-
-                if (!item) return;
-
-                setSelected({
-                  type: "competitor",
-
-                  title: item.competitor,
-
-                  value: item.losses,
-
-                  secondary:
-                    `${item.losses} competitive losses`,
-
-                  tertiary:
-                    `${item.wins} wins / ${item.losses} losses`,
-
-                  description:
-                    `${item.competitor} appears in ${item.losses} competitive losses in the current filtered dataset. This signal can help management investigate pricing, feature gaps, positioning and buyer-stage objections.`,
-
-                  action:
-                    "Compare competitive losses against wins, review recurring objections and identify high-value accounts where re-engagement may still be possible.",
-                });
-              },
-            }}
-          />
-
-        </section>
-      </div>
-
-      {/* ================= INTELLIGENCE PANEL ================= */}
-
-      <IntelligencePanel
-        selected={selected}
-        onClose={() => setSelected(null)}
-      />
-    </>
-  );
+<file path="app/api/deals/route.ts">
+export async function GET() {
+  try {
+    const backendUrl = process.env.BACKEND_URL;
+
+    if (!backendUrl) {
+      return Response.json(
+        { error: "BACKEND_URL is not configured" },
+        { status: 500 }
+      );
+    }
+
+    const response = await fetch(`${backendUrl}/api/deals`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return Response.json(
+        { error: `Backend returned ${response.status}` },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+
+    return Response.json(data);
+  } catch (error) {
+    console.error("Backend proxy error:", error);
+
+    return Response.json(
+      { error: "Unable to connect to FastAPI backend" },
+      { status: 500 }
+    );
+  }
 }
 </file>
 
@@ -1156,739 +641,6 @@ body {
 }
 </file>
 
-<file path="backend/Dockerfile">
-FROM python:3.12-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY main.py .
-
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-</file>
-
-<file path="backend/main.py">
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
-
-class Deal(BaseModel):
-    id: str
-    date: str
-    location: str
-    team: str
-    product: str
-    company: str
-    segment: str
-    reason: str
-    competitor: str
-    stage: str
-    value: int
-    priority: str
-    action: str
-
-
-app = FastAPI(
-    title="Lost Deal Recovery API",
-    description="FastAPI backend for the Lost Deal Reason & Recovery Intelligence dashboard.",
-    version="1.0.0",
-)
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-deals = [
-    {
-        "id": "CRM-001",
-        "date": "2026-01-08",
-        "location": "Bengaluru",
-        "team": "Enterprise",
-        "product": "Analytics Suite",
-        "company": "Aster Systems",
-        "segment": "Enterprise",
-        "reason": "Price",
-        "competitor": "Salesforce",
-        "stage": "Negotiation",
-        "value": 850000,
-        "priority": "HIGH",
-        "action": "Re-engage with ROI comparison and flexible pricing.",
-    },
-    {
-        "id": "CRM-002",
-        "date": "2026-01-14",
-        "location": "Mumbai",
-        "team": "Enterprise",
-        "product": "Cloud Platform",
-        "company": "Nova Retail",
-        "segment": "Enterprise",
-        "reason": "Competitor",
-        "competitor": "Microsoft",
-        "stage": "Proposal",
-        "value": 720000,
-        "priority": "HIGH",
-        "action": "Review competitor feature gap and schedule executive follow-up.",
-    },
-    {
-        "id": "CRM-003",
-        "date": "2026-01-22",
-        "location": "Kochi",
-        "team": "SMB",
-        "product": "Analytics Suite",
-        "company": "Bluewave Foods",
-        "segment": "SMB",
-        "reason": "Product Fit",
-        "competitor": "Zoho",
-        "stage": "Evaluation",
-        "value": 280000,
-        "priority": "MEDIUM",
-        "action": "Offer a product-fit workshop and targeted demo.",
-    },
-    {
-        "id": "CRM-004",
-        "date": "2026-02-03",
-        "location": "Chennai",
-        "team": "Mid-Market",
-        "product": "CRM Platform",
-        "company": "Orbit Logistics",
-        "segment": "Mid-Market",
-        "reason": "Timing",
-        "competitor": "HubSpot",
-        "stage": "Proposal",
-        "value": 460000,
-        "priority": "MEDIUM",
-        "action": "Create a 60-day re-engagement reminder.",
-    },
-    {
-        "id": "CRM-005",
-        "date": "2026-02-11",
-        "location": "Hyderabad",
-        "team": "Enterprise",
-        "product": "Cloud Platform",
-        "company": "Vertex Health",
-        "segment": "Enterprise",
-        "reason": "Price",
-        "competitor": "AWS",
-        "stage": "Negotiation",
-        "value": 1100000,
-        "priority": "HIGH",
-        "action": "Escalate for commercial review and ROI justification.",
-    },
-    {
-        "id": "CRM-006",
-        "date": "2026-02-18",
-        "location": "Pune",
-        "team": "SMB",
-        "product": "CRM Platform",
-        "company": "Bright Retail",
-        "segment": "SMB",
-        "reason": "Budget",
-        "competitor": "Zoho",
-        "stage": "Qualification",
-        "value": 190000,
-        "priority": "LOW",
-        "action": "Revisit during next budget cycle.",
-    },
-    {
-        "id": "CRM-007",
-        "date": "2026-02-26",
-        "location": "Delhi",
-        "team": "Mid-Market",
-        "product": "Analytics Suite",
-        "company": "Northstar Finance",
-        "segment": "Mid-Market",
-        "reason": "Competitor",
-        "competitor": "Power BI",
-        "stage": "Negotiation",
-        "value": 640000,
-        "priority": "HIGH",
-        "action": "Compare analytics capabilities and migration benefits.",
-    },
-    {
-        "id": "CRM-008",
-        "date": "2026-03-04",
-        "location": "Kochi",
-        "team": "SMB",
-        "product": "Cloud Platform",
-        "company": "Harbor Tech",
-        "segment": "SMB",
-        "reason": "Product Fit",
-        "competitor": "AWS",
-        "stage": "Evaluation",
-        "value": 230000,
-        "priority": "MEDIUM",
-        "action": "Run a technical discovery session.",
-    },
-    {
-        "id": "CRM-009",
-        "date": "2026-03-12",
-        "location": "Bengaluru",
-        "team": "Enterprise",
-        "product": "CRM Platform",
-        "company": "Zenith Motors",
-        "segment": "Enterprise",
-        "reason": "Competitor",
-        "competitor": "Salesforce",
-        "stage": "Proposal",
-        "value": 920000,
-        "priority": "HIGH",
-        "action": "Build competitor battlecard and executive outreach.",
-    },
-    {
-        "id": "CRM-010",
-        "date": "2026-03-18",
-        "location": "Mumbai",
-        "team": "Mid-Market",
-        "product": "Analytics Suite",
-        "company": "Urban Living",
-        "segment": "Mid-Market",
-        "reason": "Timing",
-        "competitor": "Tableau",
-        "stage": "Evaluation",
-        "value": 370000,
-        "priority": "MEDIUM",
-        "action": "Schedule future re-engagement based on buying cycle.",
-    },
-    {
-        "id": "CRM-011",
-        "date": "2026-03-25",
-        "location": "Chennai",
-        "team": "SMB",
-        "product": "CRM Platform",
-        "company": "Green Basket",
-        "segment": "SMB",
-        "reason": "Budget",
-        "competitor": "Zoho",
-        "stage": "Qualification",
-        "value": 150000,
-        "priority": "LOW",
-        "action": "Send lower-tier package when budget becomes available.",
-    },
-    {
-        "id": "CRM-012",
-        "date": "2026-04-02",
-        "location": "Hyderabad",
-        "team": "Enterprise",
-        "product": "Cloud Platform",
-        "company": "Prime Energy",
-        "segment": "Enterprise",
-        "reason": "Price",
-        "competitor": "Azure",
-        "stage": "Negotiation",
-        "value": 1250000,
-        "priority": "HIGH",
-        "action": "Conduct executive pricing review and ROI analysis.",
-    },
-    {
-        "id": "CRM-013",
-        "date": "2026-04-10",
-        "location": "Pune",
-        "team": "Mid-Market",
-        "product": "CRM Platform",
-        "company": "Axis Manufacturing",
-        "segment": "Mid-Market",
-        "reason": "Product Fit",
-        "competitor": "HubSpot",
-        "stage": "Evaluation",
-        "value": 410000,
-        "priority": "MEDIUM",
-        "action": "Map missing requirements and propose configuration.",
-    },
-    {
-        "id": "CRM-014",
-        "date": "2026-04-18",
-        "location": "Delhi",
-        "team": "Enterprise",
-        "product": "Analytics Suite",
-        "company": "Summit Bank",
-        "segment": "Enterprise",
-        "reason": "Competitor",
-        "competitor": "Tableau",
-        "stage": "Negotiation",
-        "value": 980000,
-        "priority": "HIGH",
-        "action": "Present differentiated analytics capabilities.",
-    },
-    {
-        "id": "CRM-015",
-        "date": "2026-04-25",
-        "location": "Kochi",
-        "team": "SMB",
-        "product": "Cloud Platform",
-        "company": "Coastal Foods",
-        "segment": "SMB",
-        "reason": "Timing",
-        "competitor": "AWS",
-        "stage": "Proposal",
-        "value": 210000,
-        "priority": "LOW",
-        "action": "Place into quarterly recovery campaign.",
-    },
-    {
-        "id": "CRM-016",
-        "date": "2026-05-03",
-        "location": "Bengaluru",
-        "team": "Mid-Market",
-        "product": "CRM Platform",
-        "company": "Techline India",
-        "segment": "Mid-Market",
-        "reason": "Price",
-        "competitor": "Salesforce",
-        "stage": "Proposal",
-        "value": 570000,
-        "priority": "HIGH",
-        "action": "Reopen pricing discussion with value-based package.",
-    },
-    {
-        "id": "CRM-017",
-        "date": "2026-05-11",
-        "location": "Mumbai",
-        "team": "Enterprise",
-        "product": "Cloud Platform",
-        "company": "Metro Infra",
-        "segment": "Enterprise",
-        "reason": "Budget",
-        "competitor": "Azure",
-        "stage": "Qualification",
-        "value": 690000,
-        "priority": "MEDIUM",
-        "action": "Monitor budget approval and prepare re-entry plan.",
-    },
-    {
-        "id": "CRM-018",
-        "date": "2026-05-19",
-        "location": "Chennai",
-        "team": "SMB",
-        "product": "Analytics Suite",
-        "company": "FreshMart",
-        "segment": "SMB",
-        "reason": "Competitor",
-        "competitor": "Power BI",
-        "stage": "Evaluation",
-        "value": 175000,
-        "priority": "LOW",
-        "action": "Share product comparison and customer proof points.",
-    },
-    {
-        "id": "CRM-019",
-        "date": "2026-05-27",
-        "location": "Hyderabad",
-        "team": "Mid-Market",
-        "product": "CRM Platform",
-        "company": "Medix Labs",
-        "segment": "Mid-Market",
-        "reason": "Product Fit",
-        "competitor": "HubSpot",
-        "stage": "Proposal",
-        "value": 520000,
-        "priority": "MEDIUM",
-        "action": "Schedule solution-design workshop.",
-    },
-    {
-        "id": "CRM-020",
-        "date": "2026-06-05",
-        "location": "Pune",
-        "team": "Enterprise",
-        "product": "Analytics Suite",
-        "company": "Global Textiles",
-        "segment": "Enterprise",
-        "reason": "Price",
-        "competitor": "Tableau",
-        "stage": "Negotiation",
-        "value": 890000,
-        "priority": "HIGH",
-        "action": "Create executive-level commercial recovery plan.",
-    },
-]
-
-
-@app.get("/")
-def root():
-    return {
-        "message": "Lost Deal Recovery API is running"
-    }
-
-
-@app.get("/health")
-def health():
-    return {
-        "status": "ok"
-    }
-
-
-@app.get("/api/deals", response_model=list[Deal])
-def get_deals():
-    return deals
-</file>
-
-<file path="backend/requirements.txt">
-fastapi
-uvicorn[standard]
-</file>
-
-<file path="public/file.svg">
-<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
-</file>
-
-<file path="public/globe.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
-</file>
-
-<file path="public/next.svg">
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
-</file>
-
-<file path="public/vercel.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
-</file>
-
-<file path="public/window.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
-</file>
-
-<file path=".dockerignore">
-node_modules
-.next
-.git
-.gitignore
-.env
-.env.local
-*.log
-__pycache__
-*.pyc
-.DS_Store
-repomix-output.xml
-</file>
-
-<file path="AGENTS.md">
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
-</file>
-
-<file path="CLAUDE.md">
-@AGENTS.md
-</file>
-
-<file path="eslint.config.mjs">
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
-
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
-]);
-
-export default eslintConfig;
-</file>
-
-<file path="postcss.config.mjs">
-const config = {
-  plugins: {
-    "@tailwindcss/postcss": {},
-  },
-};
-
-export default config;
-</file>
-
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./*"]
-    }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": ["node_modules"]
-}
-</file>
-
-<file path="VAR_REPORT.md">
-# POC-12 — Lost Deal Reason & Recovery Intelligence
-
-# Visualization Audit Review (VAR)
-
-**Role used for review:** Senior UX Architect / Product Reviewer / Design Auditor  
-**Review scope:** Interface consistency, interaction quality, visual identity, readability, dashboard storytelling, responsive behaviour, professional presentation, information hierarchy, accessibility of key controls, and clarity of application purpose.
-
-## Final Status
-
-# VAR PASS
-
-The current POC meets the requested visualization-audit quality gate. No blocking visualization or UX issue was identified that prevents the POC from proceeding to the next quality gate.
-
----
-
-## 1. Interface Consistency — PASS
-
-- Consistent dark intelligence-terminal visual language.
-- Consistent card borders, backgrounds, spacing, and rounded corners.
-- Consistent compact uppercase analytical labels.
-- Consistent cyan/indigo intelligence accents.
-- Clear typography and spacing hierarchy.
-
-**Result: PASS**
-
-## 2. Interaction Quality — PASS
-
-- Dashboard filters provide direct control over the displayed dataset.
-- Loss-reason chart interactions open the Deal Intelligence panel.
-- Competitor chart interactions open the Deal Intelligence panel.
-- The intelligence panel has close-button and backdrop dismissal.
-- CSV and JSON export controls have clear labels.
-- Application information opens in a dedicated modal.
-
-**Result: PASS**
-
-## 3. Visual Identity — PASS
-
-The interface uses a coherent business-intelligence visual system based on:
-- Deep `#030712` application background
-- `#0B1117` content cards
-- `#38BDF8` primary intelligence accent
-- `#818CF8` secondary accent
-- Dark neutral borders
-- Compact uppercase analytical labels
-- High-contrast KPI values
-
-**Result: PASS**
-
-## 4. Readability — PASS
-
-- KPI values are visually prominent.
-- Supporting descriptions are separated from primary values.
-- Section headings clearly identify each analytical view.
-- Chart labels use muted secondary text.
-- The intelligence panel separates selected signal, context, explanation, intelligence signal, and recommended action.
-- The recovery table presents key deal attributes in a structured layout.
-
-**Result: PASS**
-
-## 5. Dashboard Storytelling — PASS
-
-The dashboard follows a clear analytical flow:
-
-1. Purpose / identity
-2. Data-source context
-3. Filters
-4. Executive KPIs
-5. Loss-reason analysis
-6. Segment concentration
-7. Competitive analysis
-8. Decision support
-9. Recovery opportunities
-10. Data export and KPI definitions
-
-This gives the user a progression from overview → diagnosis → decision support → action.
-
-**Result: PASS**
-
-## 6. Responsive Behaviour — PASS
-
-The implementation uses responsive Tailwind layouts and breakpoint-based sizing, including:
-- Responsive header and container spacing
-- Responsive KPI grid
-- Responsive filter grid
-- Full available chart width
-- Full-width intelligence panel on smaller screens and constrained sidebar on larger screens
-- Responsive dashboard grid breakpoints
-
-**Result: PASS**
-
-## 7. Professional Presentation — PASS
-
-Professional presentation elements include:
-- Clear product title and business-domain subtitle
-- Synthetic-data disclosure
-- KPI definitions and data-quality note
-- Application information modal
-- Developer signature
-- Export controls
-- Structured recovery recommendations
-- Consistent visual treatment
-
-**Result: PASS**
-
-## 8. Information Hierarchy — PASS
-
-The hierarchy is clear:
-
-**Primary:** dashboard title, KPI values, analytical charts  
-**Secondary:** filters, chart explanations, decision support  
-**Action-oriented:** recovery table, recommended actions, exports  
-**Supporting:** data-quality notes, KPI definitions, application information
-
-The Deal Intelligence panel focuses attention on a selected signal without replacing the main dashboard.
-
-**Result: PASS**
-
-## 9. Accessibility of Key Controls — PASS
-
-- Key icon-only controls use `aria-label` text.
-- Interactive controls are visually identifiable.
-- Close controls are clearly positioned.
-- Primary actions use visible text labels where practical.
-- Filter controls include visible focus styling.
-
-**Result: PASS**
-
-## 10. Clear Application Purpose — PASS
-
-The title **LOST DEAL REASON & RECOVERY INTELLIGENCE** clearly communicates the product purpose.
-
-The supporting subtitle **LEADS & CONVERSION • MANAGEMENT INTELLIGENCE** clarifies the business domain.
-
-The dashboard directly supports that purpose through loss-reason analysis, competitor analysis, segment analysis, recovery prioritisation, and recommended actions.
-
-**Result: PASS**
-
----
-
-# Improvements Reviewed
-
-The current implementation includes:
-
-- POC-specific intelligence dashboard replacing the default Next.js starter page.
-- Reusable dashboard components.
-- Interactive Pareto and competitor visualisations.
-- Deal Intelligence side panel.
-- Contextual explanations and recommended actions.
-- Responsive dashboard layouts.
-- Synthetic-data disclosure.
-- KPI definitions and data-quality information.
-- CSV and JSON export.
-- Application information and developer-signature presentation.
-- Accessible labels for key icon controls.
-- Consistent visual system across the dashboard.
-
----
-
-# Validation Evidence
-
-## Production Build
-
-The application successfully completed:
-
-```bash
-npm run build
-```
-
-The reported build completed successfully with Next.js production compilation, TypeScript validation, page-data collection, static page generation, and page optimization.
-
-**Build Result: PASS**
-
-## Visual / Interaction Review
-
-The dashboard and Deal Intelligence panel were visually reviewed. The reviewed interface demonstrates working dashboard rendering, analytical charts, filters, intelligence-panel interaction, recovery table, export controls, and coherent visual identity.
-
-**Visual Review Result: PASS**
-
----
-
-# Non-Blocking Notes
-
-The dataset is explicitly synthetic and is labelled as such within the application.
-
-This VAR review evaluates the POC interface and interaction design. It does not certify the accuracy of external CRM data or business outcomes.
-
-No blocking UX, visualization, or presentation issue remains for the VAR gate.
-
----
-
-# Final VAR Decision
-
-## VAR PASS ✅
-
-**POC-12 — Lost Deal Reason & Recovery Intelligence**
-
-The application has passed the Visualization Audit Review and is ready to proceed to the next quality gate, subject to the required UAT validation.
-</file>
-
-<file path="vercel.json">
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "frontend": {
-      "root": "./"
-    },
-    "backend": {
-      "root": "backend/",
-      "entrypoint": "main:app"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "backend"
-      }
-    },
-    {
-      "source": "/(.*)",
-      "destination": {
-        "service": "frontend"
-      }
-    }
-  ]
-}
-</file>
-
 <file path="app/layout.tsx">
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -1920,416 +672,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     </html>
   );
 }
-</file>
-
-<file path="Dockerfile">
-FROM node:22-alpine AS deps
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm ci
-
-FROM node:22-alpine AS builder
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-
-RUN npm run build
-
-FROM node:22-alpine AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-
-EXPOSE 3001
-
-CMD ["npm", "run", "start", "--", "-p", "3001"]
-</file>
-
-<file path="next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://backend:8000/api/:path*",
-      },
-    ];
-  },
-};
-
-export default nextConfig;
-</file>
-
-<file path="package.json">
-{
-  "name": "poc-12-lost-deal-recovery",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "echarts": "^6.1.0",
-    "echarts-for-react": "^3.0.6",
-    "lucide-react": "^1.44.0",
-    "next": "16.3.4",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.4",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
-}
-</file>
-
-<file path="UAT_CHECKLIST.md">
-# POC-12 — Lost Deal Reason & Recovery Intelligence
-
-# Functional User Acceptance Testing (UAT)
-
-**Project:** POC-12 — Leads & Conversion  
-**Application:** Lost Deal Reason & Recovery Intelligence  
-**UAT Status:** **UAT PASS ✅**  
-**Blocking Issues:** None
-
----
-
-## 1. Scope
-
-The UAT covered:
-
-- Filters
-- Tooltips
-- Loading states
-- User interactions
-- Navigation
-- Responsiveness
-- Edge cases
-- Error handling
-- Data correctness
-- User workflow validation
-- Frontend-to-backend communication
-- Browser refresh behaviour
-- Empty/unavailable data conditions
-- Production build validation
-
-The current POC uses a synthetic CRM dataset served through an active FastAPI backend. The Next.js frontend retrieves the dataset through the `/api/deals` endpoint and performs the dashboard filtering, KPI calculations, chart preparation and recovery intelligence calculations from the returned data.
-
----
-
-## 2. Test Environment
-
-- Next.js 16.3.4
-- React / Next.js App Router
-- Tailwind CSS
-- Apache ECharts via `echarts-for-react`
-- FastAPI backend
-- Uvicorn
-- Synthetic CRM demonstration dataset
-- Frontend: `http://localhost:3001`
-- Backend: `http://127.0.0.1:8000`
-- API endpoint: `GET /api/deals`
-- Health endpoint: `GET /health`
-- Production build command: `npm run build`
-
----
-
-## 3. UAT Test Cases
-
-| ID | Test | Expected Result | Result | Evidence |
-|---|---|---|---|---|
-| UAT-001 | Open application | Dashboard loads and clearly communicates its purpose | PASS | Dashboard visual review |
-| UAT-002 | Location filter | Dataset and derived dashboard values update | PASS | Filter logic |
-| UAT-003 | Team filter | Dataset updates | PASS | Filter logic |
-| UAT-004 | Product filter | Dataset updates | PASS | Filter logic |
-| UAT-005 | Segment filter | Dataset updates | PASS | Filter logic |
-| UAT-006 | Loss-reason filter | Dataset updates | PASS | Filter logic |
-| UAT-007 | Priority filter | Dataset updates | PASS | Filter logic |
-| UAT-008 | Combined filters | All active filters are applied together | PASS | `filteredDeals` logic |
-| UAT-009 | KPI recalculation | Lost deals, value, priority count and average update from filtered data | PASS | Derived KPI logic |
-| UAT-010 | Pareto chart | Loss-reason counts and cumulative pattern render | PASS | Dashboard review |
-| UAT-011 | Pareto tooltip | Hover provides chart information | PASS | ECharts tooltip configuration |
-| UAT-012 | Pareto click | Selecting a reason opens Intelligence Panel | PASS | Dashboard interaction |
-| UAT-013 | Segment heatmap | Segment/reason concentration renders | PASS | Dashboard review |
-| UAT-014 | Heatmap tooltip | Hover provides chart information | PASS | ECharts tooltip configuration |
-| UAT-015 | Competitor matrix | Competitor data renders | PASS | Dashboard review |
-| UAT-016 | Competitor tooltip | Hover provides chart information | PASS | ECharts tooltip configuration |
-| UAT-017 | Competitor click | Selecting a competitor opens Intelligence Panel | PASS | Dashboard interaction |
-| UAT-018 | Intelligence Panel | Signal, type, value, context, explanation and action display | PASS | Supplied dashboard screenshot |
-| UAT-019 | Panel close | Close button closes panel | PASS | `onClose` |
-| UAT-020 | Panel backdrop | Backdrop closes panel | PASS | `onClose` |
-| UAT-021 | Recovery table | Lost opportunities and actions display | PASS | Dashboard review |
-| UAT-022 | Recovery ordering | HIGH priority is prioritised, then value | PASS | Sorting logic |
-| UAT-023 | CSV export | Filtered records download as CSV | PASS | `downloadCSV` |
-| UAT-024 | JSON export | Filtered records download as JSON | PASS | `downloadJSON` |
-| UAT-025 | Info modal | Application information opens | PASS | UI implementation |
-| UAT-026 | Info modal close | Modal closes correctly | PASS | UI implementation |
-| UAT-027 | Navigation | Root route `/` loads the dashboard | PASS | Next.js application |
-| UAT-028 | Browser refresh | Root route reloads successfully | PASS | Browser refresh validation |
-| UAT-029 | Responsive layout | Breakpoint layouts adapt to viewport size | PASS | Tailwind responsive classes |
-| UAT-030 | Mobile intelligence panel | Panel becomes full-width on small screens | PASS | Responsive panel classes |
-| UAT-031 | Empty filtered dataset | KPIs safely fall back to zero | PASS | Empty-data logic |
-| UAT-032 | Empty loss reasons | Top reason falls back to `No data` | PASS | Explicit fallback |
-| UAT-033 | Empty competitors | Top competitor falls back to `No data` | PASS | Explicit fallback |
-| UAT-034 | No selected signal | Intelligence Panel does not render | PASS | `if (!selected) return null` |
-| UAT-035 | Missing optional panel data | `Not available` fallback is shown | PASS | Panel fallback handling |
-| UAT-036 | Zero Pareto total | No divide-by-zero condition | PASS | Explicit zero-total guard |
-| UAT-037 | Invalid chart event | Invalid click event is ignored | PASS | Event guards |
-| UAT-038 | Data correctness | KPIs/charts derive from filtered synthetic records | PASS | Derived calculations |
-| UAT-039 | Currency formatting | Values use INR/en-IN formatting | PASS | `Intl.NumberFormat` |
-| UAT-040 | Synthetic-data disclosure | Dataset is clearly identified as synthetic | PASS | Data Source notice |
-| UAT-041 | Loading state | Loading message appears while CRM data is retrieved from FastAPI | PASS | Frontend loading state |
-| UAT-042 | Runtime API errors | API failure displays a clear error message | PASS | `apiError` state |
-| UAT-043 | Frontend/backend communication | Frontend successfully retrieves CRM records from FastAPI `/api/deals` | PASS | FastAPI API validation |
-| UAT-044 | Production build | `npm run build` completes without blocking errors | PASS | Terminal build result |
-
----
-
-## 4. Filter Validation
-
-All six filters were covered:
-
-1. Location
-2. Team
-3. Product
-4. Segment
-5. Loss Reason
-6. Priority
-
-Multiple filters are applied together through the same filtered dataset, and downstream KPIs, charts and recovery records derive from that result.
-
-**Result: PASS ✅**
-
----
-
-## 5. Tooltip Validation
-
-ECharts tooltips are configured for:
-
-- Loss-reason Pareto
-- Segment heatmap
-- Competitor matrix
-
-Hover interactions provide contextual chart information without changing the underlying dataset.
-
-**Result: PASS ✅**
-
----
-
-## 6. Loading and Error Handling
-
-The dashboard loads CRM data asynchronously from the FastAPI backend.
-
-The frontend provides:
-
-- Loading state while CRM data is retrieved.
-- API error message when the backend request fails.
-- Empty-data safeguards for dashboard calculations.
-- Safe fallback handling for unavailable loss reasons and competitors.
-
-**Result: PASS ✅**
-
----
-
-## 7. User Workflow
-
-Validated workflow:
-
-```text
-Open Dashboard
-→ Review KPIs
-→ Apply Filters
-→ Identify Loss Pattern
-→ Inspect Pareto / Heatmap / Competitor Signal
-→ Open Deal Intelligence
-→ Review Why This Matters
-→ Review Recommended Action
-→ Inspect Recovery Opportunities
-→ Export Filtered Data
-</file>
-
-<file path=".gitignore">
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-__pycache__/
-</file>
-
-<file path="docker-compose.yml">
-services:
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-
-    ports:
-      - "3001:3001"
-
-
-    depends_on:
-      - backend
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-
-    ports:
-      - "8001:8000"
-</file>
-
-<file path="README.md">
-# PoC 12 — Lost Deal Reason & Recovery Intelligence
-
-A decision-support dashboard for analysing lost CRM deals, identifying recurring loss reasons and competitive signals, and surfacing recovery-oriented actions.
-
-## Overview
-
-This PoC transforms lost-deal records into an interactive intelligence dashboard.
-
-Users can:
-
-- Analyse lost deals by location, team, product, segment, loss reason, and priority
-- Monitor key recovery and loss indicators
-- Explore loss reasons using analytical charts
-- Analyse customer-segment patterns
-- Review competitive loss signals
-- Open an Intelligence Panel for contextual interpretation
-- Review deal-level recovery information
-- Export dashboard data as CSV and JSON
-
-> **Data note:** This PoC uses a synthetic CRM loss/follow-up dataset for demonstration and decision-support purposes. Company names and records are synthetic.
-
----
-
-## Key Features
-
-### Dashboard Intelligence
-
-- KPI summary
-- Interactive filtering
-- Loss-reason analysis
-- Segment analysis
-- Competitive analysis
-- Intelligence Panel
-- Recovery recommendations
-- Deal-level recovery table
-
-### User Interactions
-
-- Filter combinations
-- Interactive chart tooltips
-- Chart selection
-- Intelligence Panel
-- Information interface
-- CSV export
-- JSON export
-
-### Responsive Design
-
-The dashboard was tested across:
-
-- Desktop
-- Tablet
-- Mobile
-
----
-
-## Technology Stack
-
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- Apache ECharts
-- ECharts React integration
-
----
-
-## Project Structure
-
-```text
-poc-12-lost-deal-recovery/
-│
-├── app/
-│   ├── components/
-│   │   ├── DashboardCharts.tsx
-│   │   ├── DecisionPanel.tsx
-│   │   ├── IntelligencePanel.tsx
-│   │   └── RecoveryTable.tsx
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-│
-├── public/
-│
-├── VAR_REPORT.md
-├── UAT_CHECKLIST.md
-├── README.md
-├── package.json
-├── package-lock.json
-└── ...
-## Live Deployment
-
-https://poc-12-lost-deal-recovery.vercel.app/
 </file>
 
 <file path="app/page.tsx">
@@ -3130,6 +1472,2296 @@ export default function Home() {
     </main>
   );
 }
+</file>
+
+<file path="backend/Dockerfile">
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY main.py .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+</file>
+
+<file path="backend/main.py">
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+
+class Deal(BaseModel):
+    id: str
+    date: str
+    location: str
+    team: str
+    product: str
+    company: str
+    segment: str
+    reason: str
+    competitor: str
+    stage: str
+    value: int
+    priority: str
+    action: str
+
+
+app = FastAPI(
+    title="Lost Deal Recovery API",
+    description="FastAPI backend for the Lost Deal Reason & Recovery Intelligence dashboard.",
+    version="1.0.0",
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+deals = [
+    {
+        "id": "CRM-001",
+        "date": "2026-01-08",
+        "location": "Bengaluru",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Aster Systems",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Salesforce",
+        "stage": "Negotiation",
+        "value": 850000,
+        "priority": "HIGH",
+        "action": "Re-engage with ROI comparison and flexible pricing.",
+    },
+    {
+        "id": "CRM-002",
+        "date": "2026-01-14",
+        "location": "Mumbai",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Nova Retail",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Microsoft",
+        "stage": "Proposal",
+        "value": 720000,
+        "priority": "HIGH",
+        "action": "Review competitor feature gap and schedule executive follow-up.",
+    },
+    {
+        "id": "CRM-003",
+        "date": "2026-01-22",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Analytics Suite",
+        "company": "Bluewave Foods",
+        "segment": "SMB",
+        "reason": "Product Fit",
+        "competitor": "Zoho",
+        "stage": "Evaluation",
+        "value": 280000,
+        "priority": "MEDIUM",
+        "action": "Offer a product-fit workshop and targeted demo.",
+    },
+    {
+        "id": "CRM-004",
+        "date": "2026-02-03",
+        "location": "Chennai",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Orbit Logistics",
+        "segment": "Mid-Market",
+        "reason": "Timing",
+        "competitor": "HubSpot",
+        "stage": "Proposal",
+        "value": 460000,
+        "priority": "MEDIUM",
+        "action": "Create a 60-day re-engagement reminder.",
+    },
+    {
+        "id": "CRM-005",
+        "date": "2026-02-11",
+        "location": "Hyderabad",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Vertex Health",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "AWS",
+        "stage": "Negotiation",
+        "value": 1100000,
+        "priority": "HIGH",
+        "action": "Escalate for commercial review and ROI justification.",
+    },
+    {
+        "id": "CRM-006",
+        "date": "2026-02-18",
+        "location": "Pune",
+        "team": "SMB",
+        "product": "CRM Platform",
+        "company": "Bright Retail",
+        "segment": "SMB",
+        "reason": "Budget",
+        "competitor": "Zoho",
+        "stage": "Qualification",
+        "value": 190000,
+        "priority": "LOW",
+        "action": "Revisit during next budget cycle.",
+    },
+    {
+        "id": "CRM-007",
+        "date": "2026-02-26",
+        "location": "Delhi",
+        "team": "Mid-Market",
+        "product": "Analytics Suite",
+        "company": "Northstar Finance",
+        "segment": "Mid-Market",
+        "reason": "Competitor",
+        "competitor": "Power BI",
+        "stage": "Negotiation",
+        "value": 640000,
+        "priority": "HIGH",
+        "action": "Compare analytics capabilities and migration benefits.",
+    },
+    {
+        "id": "CRM-008",
+        "date": "2026-03-04",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Cloud Platform",
+        "company": "Harbor Tech",
+        "segment": "SMB",
+        "reason": "Product Fit",
+        "competitor": "AWS",
+        "stage": "Evaluation",
+        "value": 230000,
+        "priority": "MEDIUM",
+        "action": "Run a technical discovery session.",
+    },
+    {
+        "id": "CRM-009",
+        "date": "2026-03-12",
+        "location": "Bengaluru",
+        "team": "Enterprise",
+        "product": "CRM Platform",
+        "company": "Zenith Motors",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Salesforce",
+        "stage": "Proposal",
+        "value": 920000,
+        "priority": "HIGH",
+        "action": "Build competitor battlecard and executive outreach.",
+    },
+    {
+        "id": "CRM-010",
+        "date": "2026-03-18",
+        "location": "Mumbai",
+        "team": "Mid-Market",
+        "product": "Analytics Suite",
+        "company": "Urban Living",
+        "segment": "Mid-Market",
+        "reason": "Timing",
+        "competitor": "Tableau",
+        "stage": "Evaluation",
+        "value": 370000,
+        "priority": "MEDIUM",
+        "action": "Schedule future re-engagement based on buying cycle.",
+    },
+    {
+        "id": "CRM-011",
+        "date": "2026-03-25",
+        "location": "Chennai",
+        "team": "SMB",
+        "product": "CRM Platform",
+        "company": "Green Basket",
+        "segment": "SMB",
+        "reason": "Budget",
+        "competitor": "Zoho",
+        "stage": "Qualification",
+        "value": 150000,
+        "priority": "LOW",
+        "action": "Send lower-tier package when budget becomes available.",
+    },
+    {
+        "id": "CRM-012",
+        "date": "2026-04-02",
+        "location": "Hyderabad",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Prime Energy",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Azure",
+        "stage": "Negotiation",
+        "value": 1250000,
+        "priority": "HIGH",
+        "action": "Conduct executive pricing review and ROI analysis.",
+    },
+    {
+        "id": "CRM-013",
+        "date": "2026-04-10",
+        "location": "Pune",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Axis Manufacturing",
+        "segment": "Mid-Market",
+        "reason": "Product Fit",
+        "competitor": "HubSpot",
+        "stage": "Evaluation",
+        "value": 410000,
+        "priority": "MEDIUM",
+        "action": "Map missing requirements and propose configuration.",
+    },
+    {
+        "id": "CRM-014",
+        "date": "2026-04-18",
+        "location": "Delhi",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Summit Bank",
+        "segment": "Enterprise",
+        "reason": "Competitor",
+        "competitor": "Tableau",
+        "stage": "Negotiation",
+        "value": 980000,
+        "priority": "HIGH",
+        "action": "Present differentiated analytics capabilities.",
+    },
+    {
+        "id": "CRM-015",
+        "date": "2026-04-25",
+        "location": "Kochi",
+        "team": "SMB",
+        "product": "Cloud Platform",
+        "company": "Coastal Foods",
+        "segment": "SMB",
+        "reason": "Timing",
+        "competitor": "AWS",
+        "stage": "Proposal",
+        "value": 210000,
+        "priority": "LOW",
+        "action": "Place into quarterly recovery campaign.",
+    },
+    {
+        "id": "CRM-016",
+        "date": "2026-05-03",
+        "location": "Bengaluru",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Techline India",
+        "segment": "Mid-Market",
+        "reason": "Price",
+        "competitor": "Salesforce",
+        "stage": "Proposal",
+        "value": 570000,
+        "priority": "HIGH",
+        "action": "Reopen pricing discussion with value-based package.",
+    },
+    {
+        "id": "CRM-017",
+        "date": "2026-05-11",
+        "location": "Mumbai",
+        "team": "Enterprise",
+        "product": "Cloud Platform",
+        "company": "Metro Infra",
+        "segment": "Enterprise",
+        "reason": "Budget",
+        "competitor": "Azure",
+        "stage": "Qualification",
+        "value": 690000,
+        "priority": "MEDIUM",
+        "action": "Monitor budget approval and prepare re-entry plan.",
+    },
+    {
+        "id": "CRM-018",
+        "date": "2026-05-19",
+        "location": "Chennai",
+        "team": "SMB",
+        "product": "Analytics Suite",
+        "company": "FreshMart",
+        "segment": "SMB",
+        "reason": "Competitor",
+        "competitor": "Power BI",
+        "stage": "Evaluation",
+        "value": 175000,
+        "priority": "LOW",
+        "action": "Share product comparison and customer proof points.",
+    },
+    {
+        "id": "CRM-019",
+        "date": "2026-05-27",
+        "location": "Hyderabad",
+        "team": "Mid-Market",
+        "product": "CRM Platform",
+        "company": "Medix Labs",
+        "segment": "Mid-Market",
+        "reason": "Product Fit",
+        "competitor": "HubSpot",
+        "stage": "Proposal",
+        "value": 520000,
+        "priority": "MEDIUM",
+        "action": "Schedule solution-design workshop.",
+    },
+    {
+        "id": "CRM-020",
+        "date": "2026-06-05",
+        "location": "Pune",
+        "team": "Enterprise",
+        "product": "Analytics Suite",
+        "company": "Global Textiles",
+        "segment": "Enterprise",
+        "reason": "Price",
+        "competitor": "Tableau",
+        "stage": "Negotiation",
+        "value": 890000,
+        "priority": "HIGH",
+        "action": "Create executive-level commercial recovery plan.",
+    },
+]
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "Lost Deal Recovery API is running"
+    }
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok"
+    }
+
+
+@app.get("/api/deals", response_model=list[Deal])
+def get_deals():
+    return deals
+</file>
+
+<file path="backend/requirements.txt">
+fastapi
+uvicorn[standard]
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path=".dockerignore">
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.local
+*.log
+__pycache__
+*.pyc
+.DS_Store
+repomix-output.xml
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+__pycache__/
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
+<file path="docker-compose.yml">
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    ports:
+      - "3001:3001"
+
+
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    ports:
+      - "8001:8000"
+</file>
+
+<file path="Dockerfile">
+FROM node:22-alpine AS deps
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+EXPOSE 3001
+
+CMD ["npm", "run", "start", "--", "-p", "3001"]
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="SELENIUM_TEST_REPORT.md">
+POC-12 — Selenium E2E Test Report
+=============================================
+
+Live URL: https://poc-12-lost-deal-recovery-phase2.onrender.com/
+
+1. Live URL opens: PASS
+   https://poc-12-lost-deal-recovery-phase2.onrender.com/
+2. Main dashboard loads: PASS
+   Dashboard heading is visible
+3. Core visualization renders: PASS
+   5 chart canvas element(s) detected
+4. Data loading: PASS
+   6 filter controls detected
+5. Filter interaction: PASS
+   Location filter changed to Kochi
+6. Frontend-to-backend communication: PASS
+   /api/deals status=200, records=20
+7. Intelligence Panel opens: PASS
+   Chart data-point interaction opened the panel
+8. Intelligence Panel closes: PASS
+   Close button successfully closed the panel
+9. Application Info modal opens: PASS
+   Application information is visible
+10. Responsive mobile viewport: PASS
+   390x844 viewport checked
+
+Passed: 10/10
+Failed: 0/10
+
+FINAL RESULT: 100% PASS
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="vercel.json">
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": "./"
+    },
+    "backend": {
+      "root": "backend/",
+      "entrypoint": "main:app"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
+  ]
+}
+</file>
+
+<file path="app/components/DashboardCharts.tsx">
+"use client";
+
+import { useState } from "react";
+import ReactECharts from "echarts-for-react";
+import IntelligencePanel from "./IntelligencePanel";
+
+type ChartProps = {
+  lossReasons: {
+    reason: string;
+    count: number;
+  }[];
+
+  segments: {
+    segment: string;
+    reason: string;
+    value: number;
+  }[];
+
+  competitors: {
+    competitor: string;
+    wins: number;
+    losses: number;
+  }[];
+};
+
+type SelectedSignal = {
+  type: "reason" | "competitor";
+  title: string;
+  value?: number;
+  secondary?: string;
+  tertiary?: string;
+  description?: string;
+  action?: string;
+};
+
+export default function DashboardCharts({
+  lossReasons,
+  segments,
+  competitors,
+}: ChartProps) {
+  const [selected, setSelected] =
+    useState<SelectedSignal | null>(null);
+
+  /* ---------------- LOSS REASON PARETO ---------------- */
+
+  const paretoLabels = lossReasons.map(
+    (item) => item.reason
+  );
+
+  const paretoValues = lossReasons.map(
+    (item) => item.count
+  );
+
+  const total = paretoValues.reduce(
+    (sum, value) => sum + value,
+    0
+  );
+
+  let running = 0;
+
+  const cumulative = paretoValues.map((value) => {
+    running += value;
+
+    return total > 0
+      ? Math.round((running / total) * 100)
+      : 0;
+  });
+
+  const paretoOption = {
+    backgroundColor: "transparent",
+
+    tooltip: {
+      trigger: "axis",
+    },
+
+    grid: {
+      left: 45,
+      right: 45,
+      top: 35,
+      bottom: 70,
+    },
+
+    xAxis: {
+      type: "category",
+      data: paretoLabels,
+
+      axisLabel: {
+        color: "#94a3b8",
+        rotate: 25,
+        fontSize: 10,
+      },
+
+      axisLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    yAxis: [
+      {
+        type: "value",
+        name: "Deals",
+
+        nameTextStyle: {
+          color: "#64748b",
+        },
+
+        axisLabel: {
+          color: "#64748b",
+        },
+
+        splitLine: {
+          lineStyle: {
+            color: "#1f2937",
+          },
+        },
+      },
+
+      {
+        type: "value",
+        name: "%",
+
+        min: 0,
+        max: 100,
+
+        axisLabel: {
+          color: "#64748b",
+        },
+
+        splitLine: {
+          show: false,
+        },
+      },
+    ],
+
+    series: [
+      {
+        name: "Lost Deals",
+        type: "bar",
+        data: paretoValues,
+
+        barMaxWidth: 36,
+
+        itemStyle: {
+          color: "#38bdf8",
+          borderRadius: [5, 5, 0, 0],
+        },
+      },
+
+      {
+        name: "Cumulative",
+        type: "line",
+
+        yAxisIndex: 1,
+        data: cumulative,
+
+        smooth: true,
+
+        symbol: "circle",
+        symbolSize: 6,
+
+        itemStyle: {
+          color: "#818cf8",
+        },
+
+        lineStyle: {
+          width: 2,
+          color: "#818cf8",
+        },
+      },
+    ],
+  };
+
+  /* ---------------- SEGMENT HEATMAP ---------------- */
+
+  const segmentLabels = [
+    ...new Set(
+      segments.map((item) => item.segment)
+    ),
+  ];
+
+  const reasonLabels = [
+    ...new Set(
+      segments.map((item) => item.reason)
+    ),
+  ];
+
+  const heatmapData = segments.map((item) => {
+    const x = segmentLabels.indexOf(item.segment);
+    const y = reasonLabels.indexOf(item.reason);
+
+    return [x, y, item.value];
+  });
+
+  const heatmapMax =
+    segments.length > 0
+      ? Math.max(
+          1,
+          ...segments.map((item) => item.value)
+        )
+      : 1;
+
+  const heatmapOption = {
+    backgroundColor: "transparent",
+
+    tooltip: {
+      position: "top",
+
+      formatter: (params: {
+        data: [number, number, number];
+      }) => {
+        const [x, y, value] = params.data;
+
+        return `
+          <div>
+            <strong>${segmentLabels[x]}</strong><br/>
+            ${reasonLabels[y]}<br/>
+            Lost deals: ${value}
+          </div>
+        `;
+      },
+    },
+
+    grid: {
+      left: 95,
+      right: 20,
+      top: 20,
+      bottom: 55,
+    },
+
+    xAxis: {
+      type: "category",
+      data: segmentLabels,
+
+      axisLabel: {
+        color: "#94a3b8",
+        fontSize: 10,
+      },
+
+      axisLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    yAxis: {
+      type: "category",
+      data: reasonLabels,
+
+      axisLabel: {
+        color: "#94a3b8",
+        fontSize: 9,
+      },
+
+      axisLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    visualMap: {
+      min: 0,
+      max: heatmapMax,
+
+      calculable: true,
+
+      orient: "horizontal",
+      left: "center",
+      bottom: 0,
+
+      textStyle: {
+        color: "#64748b",
+      },
+    },
+
+    series: [
+      {
+        type: "heatmap",
+        data: heatmapData,
+
+        label: {
+          show: true,
+          color: "#e2e8f0",
+          fontSize: 10,
+        },
+
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowColor:
+              "rgba(56,189,248,.5)",
+          },
+        },
+      },
+    ],
+  };
+
+  /* ---------------- COMPETITOR MATRIX ---------------- */
+
+  const competitorOption = {
+    backgroundColor: "transparent",
+
+    tooltip: {
+      trigger: "axis",
+    },
+
+    legend: {
+      textStyle: {
+        color: "#94a3b8",
+      },
+    },
+
+    grid: {
+      left: 45,
+      right: 20,
+      top: 50,
+      bottom: 55,
+    },
+
+    xAxis: {
+      type: "category",
+
+      data: competitors.map(
+        (item) => item.competitor
+      ),
+
+      axisLabel: {
+        color: "#94a3b8",
+        fontSize: 10,
+        rotate: 20,
+      },
+
+      axisLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    yAxis: {
+      type: "value",
+
+      axisLabel: {
+        color: "#64748b",
+      },
+
+      splitLine: {
+        lineStyle: {
+          color: "#1f2937",
+        },
+      },
+    },
+
+    series: [
+      {
+        name: "Wins",
+        type: "bar",
+
+        data: competitors.map(
+          (item) => item.wins
+        ),
+
+        itemStyle: {
+          color: "#38bdf8",
+          borderRadius: [4, 4, 0, 0],
+        },
+      },
+
+      {
+        name: "Losses",
+        type: "bar",
+
+        data: competitors.map(
+          (item) => item.losses
+        ),
+
+        itemStyle: {
+          color: "#818cf8",
+          borderRadius: [4, 4, 0, 0],
+        },
+      },
+    ],
+  };
+
+  return (
+    <>
+      <div className="space-y-5">
+
+        {/* ================= PARETO ================= */}
+
+        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
+
+          <div className="mb-3">
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              LOSS-REASON PARETO
+            </div>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Identifies the loss reasons contributing most
+              to missed opportunities. Click a reason for
+              intelligence.
+            </p>
+          </div>
+
+          <ReactECharts
+            data-testid="loss-reason-chart"
+            option={paretoOption}
+            style={{
+              height: 300,
+              width: "100%",
+            }}
+            opts={{
+              renderer: "canvas",
+            }}
+            onEvents={{
+              click: (params: {
+                seriesType?: string;
+                dataIndex?: number;
+              }) => {
+                if (
+                  params.seriesType !== "bar" ||
+                  params.dataIndex === undefined
+                ) {
+                  return;
+                }
+
+                const item =
+                  lossReasons[params.dataIndex];
+
+                if (!item) return;
+
+                setSelected({
+                  type: "reason",
+                  title: item.reason,
+                  value: item.count,
+
+                  secondary:
+                    `${item.count} lost deals`,
+
+                  tertiary:
+                    "Loss Reason",
+
+                  description:
+                    `The loss reason "${item.reason}" contributes ${item.count} lost opportunities in the current filtered dataset. Management should investigate whether this pattern can be addressed through pricing, product fit, positioning or follow-up improvements.`,
+
+                  action:
+                    "Review the affected deals, identify recurring buyer objections and prioritize high-value opportunities where this loss reason may be recoverable.",
+                });
+              },
+            }}
+          />
+
+        </section>
+
+        {/* ================= HEATMAP ================= */}
+
+        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
+
+          <div className="mb-3">
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              SEGMENT HEATMAP
+            </div>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Shows where specific loss reasons are
+              concentrated.
+            </p>
+          </div>
+
+          <ReactECharts
+            option={heatmapOption}
+            style={{
+              height: 300,
+              width: "100%",
+            }}
+            opts={{
+              renderer: "canvas",
+            }}
+          />
+
+        </section>
+
+        {/* ================= COMPETITOR ================= */}
+
+        <section className="rounded-2xl border border-[#1F2937] bg-[#0B1117] p-4">
+
+          <div className="mb-3">
+            <div className="text-[10px] font-semibold tracking-[0.25em] text-[#38BDF8]">
+              COMPETITOR MATRIX
+            </div>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Compares competitive wins and losses. Click a
+              competitor for intelligence.
+            </p>
+          </div>
+
+          <ReactECharts
+            option={competitorOption}
+            style={{
+              height: 300,
+              width: "100%",
+            }}
+            opts={{
+              renderer: "canvas",
+            }}
+            onEvents={{
+              click: (params: {
+                seriesType?: string;
+                dataIndex?: number;
+              }) => {
+                if (
+                  params.seriesType !== "bar" ||
+                  params.dataIndex === undefined
+                ) {
+                  return;
+                }
+
+                const item =
+                  competitors[params.dataIndex];
+
+                if (!item) return;
+
+                setSelected({
+                  type: "competitor",
+
+                  title: item.competitor,
+
+                  value: item.losses,
+
+                  secondary:
+                    `${item.losses} competitive losses`,
+
+                  tertiary:
+                    `${item.wins} wins / ${item.losses} losses`,
+
+                  description:
+                    `${item.competitor} appears in ${item.losses} competitive losses in the current filtered dataset. This signal can help management investigate pricing, feature gaps, positioning and buyer-stage objections.`,
+
+                  action:
+                    "Compare competitive losses against wins, review recurring objections and identify high-value accounts where re-engagement may still be possible.",
+                });
+              },
+            }}
+          />
+
+        </section>
+      </div>
+
+      {/* ================= INTELLIGENCE PANEL ================= */}
+
+      <IntelligencePanel
+        selected={selected}
+        onClose={() => setSelected(null)}
+      />
+    </>
+  );
+}
+</file>
+
+<file path="test-results/Test_Report.txt">
+POC-12 — Selenium E2E Test Report
+=============================================
+
+Live URL: https://poc-12-lost-deal-recovery-phase2.onrender.com/
+
+1. Live URL opens: PASS
+   https://poc-12-lost-deal-recovery-phase2.onrender.com/
+2. Main dashboard loads: PASS
+   Dashboard heading is visible
+3. Core visualization renders: PASS
+   5 chart canvas element(s) detected
+4. Data loading: PASS
+   6 filter controls detected
+5. Filter interaction: PASS
+   Location filter changed to Kochi
+6. Frontend-to-backend communication: PASS
+   /api/deals status=200, records=20
+7. Intelligence Panel opens: PASS
+   Chart data-point interaction opened the panel
+8. Intelligence Panel closes: PASS
+   Close button successfully closed the panel
+9. Application Info modal opens: PASS
+   Application information is visible
+10. Responsive mobile viewport: PASS
+   390x844 viewport checked
+
+Passed: 10/10
+Failed: 0/10
+
+FINAL RESULT: 100% PASS
+</file>
+
+<file path="tests/test_live_application.py">
+import os
+from pathlib import Path
+
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support import expected_conditions as EC
+
+
+LIVE_URL = os.environ.get(
+    "LIVE_URL",
+    "https://poc-12-lost-deal-recovery-phase2.onrender.com/"
+)
+
+TIMEOUT = 30
+SCREENSHOT_DIR = Path("test-results")
+SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+
+results = []
+
+
+def record(name, passed, details=""):
+    status = "PASS" if passed else "FAIL"
+    results.append((name, status, details))
+    print(f"[{status}] {name}")
+    if details:
+        print(f"       {details}")
+
+
+def wait_for_page(driver):
+    WebDriverWait(driver, TIMEOUT).until(
+        lambda d: d.execute_script("return document.readyState") == "complete"
+    )
+
+
+def test_live_url(driver):
+    driver.get(LIVE_URL)
+    wait_for_page(driver)
+
+    WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//*[contains(normalize-space(), 'LOST DEAL REASON & RECOVERY INTELLIGENCE')]")
+        )
+    )
+
+    record("Live URL opens", True, LIVE_URL)
+
+
+def test_main_dashboard(driver):
+    heading = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//*[contains(normalize-space(), 'LOST DEAL REASON & RECOVERY INTELLIGENCE')]")
+        )
+    )
+
+    record(
+        "Main dashboard loads",
+        "LOST DEAL REASON & RECOVERY INTELLIGENCE" in heading.text,
+        "Dashboard heading is visible",
+    )
+
+
+def test_core_visualization(driver):
+    canvases = WebDriverWait(driver, TIMEOUT).until(
+        lambda d: d.find_elements(By.TAG_NAME, "canvas")
+    )
+
+    record(
+        "Core visualization renders",
+        len(canvases) > 0,
+        f"{len(canvases)} chart canvas element(s) detected",
+    )
+
+
+def test_data_loading(driver):
+    source_text = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (
+                By.XPATH,
+                "//*[contains(normalize-space(), 'Synthetic CRM loss and follow-up dataset')]",
+            )
+        )
+    )
+
+    filters = driver.find_elements(By.TAG_NAME, "select")
+
+    record(
+        "Data loading",
+        bool(source_text.is_displayed()) and len(filters) >= 6,
+        f"{len(filters)} filter controls detected",
+    )
+
+
+def test_filter_interaction(driver):
+    selects = WebDriverWait(driver, TIMEOUT).until(
+        lambda d: d.find_elements(By.TAG_NAME, "select")
+    )
+
+    location_filter = Select(selects[0])
+
+    location_filter.select_by_visible_text("Kochi")
+
+    WebDriverWait(driver, TIMEOUT).until(
+        lambda d: Select(
+            d.find_elements(By.TAG_NAME, "select")[0]
+        ).first_selected_option.text == "Kochi"
+    )
+
+    record(
+        "Filter interaction",
+        True,
+        "Location filter changed to Kochi",
+    )
+
+    location_filter.select_by_visible_text("ALL")
+
+
+def test_backend_communication(driver):
+    result = driver.execute_async_script(
+        """
+        const done = arguments[0];
+
+        fetch('/api/deals')
+          .then(async response => {
+              const data = await response.json();
+
+              done({
+                  ok: response.ok,
+                  status: response.status,
+                  count: Array.isArray(data) ? data.length : -1
+              });
+          })
+          .catch(error => {
+              done({
+                  ok: false,
+                  status: 0,
+                  count: -1,
+                  error: String(error)
+              });
+          });
+        """
+    )
+
+    passed = (
+        result.get("ok") is True
+        and result.get("status") == 200
+        and result.get("count", 0) > 0
+    )
+
+    record(
+        "Frontend-to-backend communication",
+        passed,
+        f"/api/deals status={result.get('status')}, records={result.get('count')}",
+    )
+
+
+def test_intelligence_panel(driver):
+    chart = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (By.CSS_SELECTOR, '[data-testid="loss-reason-chart"]')
+        )
+    )
+
+    canvas = chart.find_element(By.TAG_NAME, "canvas")
+
+    # Scroll the loss-reason Pareto chart into the visible browser area.
+    driver.execute_script(
+        "arguments[0].scrollIntoView({block: 'center', inline: 'center'});",
+        chart,
+    )
+    driver.execute_script(
+        "arguments[0].scrollIntoView({block: 'center', inline: 'center'});",
+        canvas,
+    )
+
+    # Use the canvas center so the pointer offset stays inside the element.
+    rect = driver.execute_script(
+        """
+        const r = arguments[0].getBoundingClientRect();
+        return {
+            left: r.left,
+            top: r.top,
+            width: r.width,
+            height: r.height
+        };
+        """,
+        canvas,
+    )
+
+    # Selenium offsets are measured from the center of the element.
+    from selenium.webdriver.common.action_chains import ActionChains
+
+    offset_x = int(rect["width"] * (0.14 - 0.50))
+    offset_y = int(rect["height"] * (0.55 - 0.50))
+
+    ActionChains(driver).move_to_element_with_offset(
+        canvas,
+        offset_x,
+        offset_y,
+    ).click().perform()
+
+    try:
+        panel_close = WebDriverWait(driver, 8).until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, '[aria-label="Close intelligence panel"]')
+            )
+        )
+        panel_title = driver.find_element(
+            By.XPATH,
+            "//*[contains(normalize-space(), 'DEAL INTELLIGENCE')]",
+        )
+
+        passed = panel_close.is_displayed() and panel_title.is_displayed()
+
+        record(
+            "Intelligence Panel opens",
+            passed,
+            "Chart data-point interaction opened the panel",
+        )
+
+        panel_close.click()
+
+        WebDriverWait(driver, TIMEOUT).until(
+            EC.invisibility_of_element_located(
+                (By.CSS_SELECTOR, '[aria-label="Close intelligence panel"]')
+            )
+        )
+
+        record(
+            "Intelligence Panel closes",
+            True,
+            "Close button successfully closed the panel",
+        )
+
+    except TimeoutException:
+        record(
+            "Intelligence Panel opens",
+            False,
+            "Panel did not appear after chart interaction",
+        )
+
+def test_info_modal(driver):
+    info_button = WebDriverWait(driver, TIMEOUT).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, '[aria-label="Application information"]')
+        )
+    )
+
+    info_button.click()
+
+    modal_title = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (
+                By.XPATH,
+                "//*[contains(normalize-space(), 'Lost Deal Reason & Recovery Intelligence')]",
+            )
+        )
+    )
+
+    record(
+        "Application Info modal opens",
+        modal_title.is_displayed(),
+        "Application information is visible",
+    )
+
+    # Close the modal using Escape.
+    driver.find_element(By.TAG_NAME, "body").send_keys("\ue00c")
+
+    WebDriverWait(driver, TIMEOUT).until(
+        lambda d: len(
+            d.find_elements(
+                By.CSS_SELECTOR,
+                '[aria-label="Application information"]',
+            )
+        )
+        > 0
+    )
+
+
+def test_responsive_viewport(driver):
+    driver.set_window_size(390, 844)
+
+    WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (
+                By.XPATH,
+                "//*[contains(normalize-space(), 'LOST DEAL REASON & RECOVERY INTELLIGENCE')]",
+            )
+        )
+    )
+
+    # Remove any ECharts tooltip left open from the chart interaction.
+    driver.execute_script("""
+        document.querySelectorAll('*').forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (style.position === 'absolute' && style.zIndex === '9999999') {
+                el.remove();
+            }
+        });
+    """)
+
+    overflow_info = driver.execute_script(
+        """
+        const elements = [...document.querySelectorAll("body *")];
+        const overflowing = elements
+          .filter(el => {
+              const r = el.getBoundingClientRect();
+              return r.right > window.innerWidth + 2;
+          })
+          .slice(0, 10)
+          .map(el => ({
+              tag: el.tagName,
+              className: String(el.className).slice(0, 120),
+              text: (el.innerText || "").trim().slice(0, 80),
+              right: Math.round(el.getBoundingClientRect().right),
+              width: Math.round(el.getBoundingClientRect().width),
+              outerHTML: el.outerHTML.slice(0, 300)
+          }));
+        return {
+            scrollWidth: document.documentElement.scrollWidth,
+            viewportWidth: window.innerWidth,
+            overflowing
+        };
+        """
+    )
+
+    no_horizontal_overflow = (
+        overflow_info["scrollWidth"] <= overflow_info["viewportWidth"] + 2
+    )
+
+    if not no_horizontal_overflow:
+        print(f"       Responsive debug: {overflow_info}")
+
+    record(
+        "Responsive mobile viewport",
+        no_horizontal_overflow,
+        "390x844 viewport checked",
+    )
+
+    driver.set_window_size(1280, 900)
+
+
+def write_report():
+    report_path = Path("test-results/Test_Report.txt")
+
+    passed = sum(1 for _, status, _ in results if status == "PASS")
+    total = len(results)
+
+    with report_path.open("w", encoding="utf-8") as report:
+        report.write("POC-12 — Selenium E2E Test Report\n")
+        report.write("=" * 45 + "\n\n")
+        report.write(f"Live URL: {LIVE_URL}\n\n")
+
+        for index, (name, status, details) in enumerate(results, 1):
+            report.write(f"{index}. {name}: {status}\n")
+            if details:
+                report.write(f"   {details}\n")
+
+        report.write("\n")
+        report.write(f"Passed: {passed}/{total}\n")
+        report.write(f"Failed: {total - passed}/{total}\n\n")
+
+        if passed == total:
+            report.write("FINAL RESULT: 100% PASS\n")
+        else:
+            report.write("FINAL RESULT: CHANGES REQUIRED\n")
+
+
+def main():
+    driver = webdriver.Chrome()
+    driver.set_window_size(1280, 900)
+
+    try:
+        test_live_url(driver)
+        test_main_dashboard(driver)
+        test_core_visualization(driver)
+        test_data_loading(driver)
+        test_filter_interaction(driver)
+        test_backend_communication(driver)
+        test_intelligence_panel(driver)
+        test_info_modal(driver)
+        test_responsive_viewport(driver)
+
+        driver.save_screenshot(
+            str(SCREENSHOT_DIR / "selenium_e2e.png")
+        )
+
+    except Exception as error:
+        record(
+            "Unexpected Selenium error",
+            False,
+            f"{type(error).__name__}: {error}",
+        )
+
+    finally:
+        write_report()
+        driver.quit()
+
+    failed = sum(1 for _, status, _ in results if status == "FAIL")
+
+    print()
+    print("Selenium test run complete.")
+    print("Report: test-results/Test_Report.txt")
+    print("Screenshot: test-results/selenium_e2e.png")
+
+    if failed:
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="tests/test_poc.py">
+import os
+from pathlib import Path
+
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support import expected_conditions as EC
+
+
+LIVE_URL = os.environ.get(
+    "LIVE_URL",
+    "https://poc-12-lost-deal-recovery-phase2.onrender.com/"
+)
+
+TIMEOUT = 30
+SCREENSHOT_DIR = Path("test-results")
+SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+
+results = []
+
+
+def record(name, passed, details=""):
+    status = "PASS" if passed else "FAIL"
+    results.append((name, status, details))
+    print(f"[{status}] {name}")
+    if details:
+        print(f"       {details}")
+
+
+def wait_for_page(driver):
+    WebDriverWait(driver, TIMEOUT).until(
+        lambda d: d.execute_script("return document.readyState") == "complete"
+    )
+
+
+def test_live_url(driver):
+    driver.get(LIVE_URL)
+    wait_for_page(driver)
+
+    WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//*[contains(normalize-space(), 'LOST DEAL REASON & RECOVERY INTELLIGENCE')]")
+        )
+    )
+
+    record("Live URL opens", True, LIVE_URL)
+
+
+def test_main_dashboard(driver):
+    heading = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//*[contains(normalize-space(), 'LOST DEAL REASON & RECOVERY INTELLIGENCE')]")
+        )
+    )
+
+    record(
+        "Main dashboard loads",
+        "LOST DEAL REASON & RECOVERY INTELLIGENCE" in heading.text,
+        "Dashboard heading is visible",
+    )
+
+
+def test_core_visualization(driver):
+    canvases = WebDriverWait(driver, TIMEOUT).until(
+        lambda d: d.find_elements(By.TAG_NAME, "canvas")
+    )
+
+    record(
+        "Core visualization renders",
+        len(canvases) > 0,
+        f"{len(canvases)} chart canvas element(s) detected",
+    )
+
+
+def test_data_loading(driver):
+    source_text = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (
+                By.XPATH,
+                "//*[contains(normalize-space(), 'Synthetic CRM loss and follow-up dataset')]",
+            )
+        )
+    )
+
+    filters = driver.find_elements(By.TAG_NAME, "select")
+
+    record(
+        "Data loading",
+        bool(source_text.is_displayed()) and len(filters) >= 6,
+        f"{len(filters)} filter controls detected",
+    )
+
+
+def test_filter_interaction(driver):
+    selects = WebDriverWait(driver, TIMEOUT).until(
+        lambda d: d.find_elements(By.TAG_NAME, "select")
+    )
+
+    location_filter = Select(selects[0])
+
+    location_filter.select_by_visible_text("Kochi")
+
+    WebDriverWait(driver, TIMEOUT).until(
+        lambda d: Select(
+            d.find_elements(By.TAG_NAME, "select")[0]
+        ).first_selected_option.text == "Kochi"
+    )
+
+    record(
+        "Filter interaction",
+        True,
+        "Location filter changed to Kochi",
+    )
+
+    location_filter.select_by_visible_text("ALL")
+
+
+def test_backend_communication(driver):
+    result = driver.execute_async_script(
+        """
+        const done = arguments[0];
+
+        fetch('/api/deals')
+          .then(async response => {
+              const data = await response.json();
+
+              done({
+                  ok: response.ok,
+                  status: response.status,
+                  count: Array.isArray(data) ? data.length : -1
+              });
+          })
+          .catch(error => {
+              done({
+                  ok: false,
+                  status: 0,
+                  count: -1,
+                  error: String(error)
+              });
+          });
+        """
+    )
+
+    passed = (
+        result.get("ok") is True
+        and result.get("status") == 200
+        and result.get("count", 0) > 0
+    )
+
+    record(
+        "Frontend-to-backend communication",
+        passed,
+        f"/api/deals status={result.get('status')}, records={result.get('count')}",
+    )
+
+
+def test_intelligence_panel(driver):
+    chart = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (By.CSS_SELECTOR, '[data-testid="loss-reason-chart"]')
+        )
+    )
+
+    canvas = chart.find_element(By.TAG_NAME, "canvas")
+
+    # Scroll the loss-reason Pareto chart into the visible browser area.
+    driver.execute_script(
+        "arguments[0].scrollIntoView({block: 'center', inline: 'center'});",
+        chart,
+    )
+    driver.execute_script(
+        "arguments[0].scrollIntoView({block: 'center', inline: 'center'});",
+        canvas,
+    )
+
+    # Use the canvas center so the pointer offset stays inside the element.
+    rect = driver.execute_script(
+        """
+        const r = arguments[0].getBoundingClientRect();
+        return {
+            left: r.left,
+            top: r.top,
+            width: r.width,
+            height: r.height
+        };
+        """,
+        canvas,
+    )
+
+    # Selenium offsets are measured from the center of the element.
+    from selenium.webdriver.common.action_chains import ActionChains
+
+    offset_x = int(rect["width"] * (0.14 - 0.50))
+    offset_y = int(rect["height"] * (0.55 - 0.50))
+
+    ActionChains(driver).move_to_element_with_offset(
+        canvas,
+        offset_x,
+        offset_y,
+    ).click().perform()
+
+    try:
+        panel_close = WebDriverWait(driver, 8).until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, '[aria-label="Close intelligence panel"]')
+            )
+        )
+        panel_title = driver.find_element(
+            By.XPATH,
+            "//*[contains(normalize-space(), 'DEAL INTELLIGENCE')]",
+        )
+
+        passed = panel_close.is_displayed() and panel_title.is_displayed()
+
+        record(
+            "Intelligence Panel opens",
+            passed,
+            "Chart data-point interaction opened the panel",
+        )
+
+        panel_close.click()
+
+        WebDriverWait(driver, TIMEOUT).until(
+            EC.invisibility_of_element_located(
+                (By.CSS_SELECTOR, '[aria-label="Close intelligence panel"]')
+            )
+        )
+
+        record(
+            "Intelligence Panel closes",
+            True,
+            "Close button successfully closed the panel",
+        )
+
+    except TimeoutException:
+        record(
+            "Intelligence Panel opens",
+            False,
+            "Panel did not appear after chart interaction",
+        )
+
+def test_info_modal(driver):
+    info_button = WebDriverWait(driver, TIMEOUT).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, '[aria-label="Application information"]')
+        )
+    )
+
+    info_button.click()
+
+    modal_title = WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (
+                By.XPATH,
+                "//*[contains(normalize-space(), 'Lost Deal Reason & Recovery Intelligence')]",
+            )
+        )
+    )
+
+    record(
+        "Application Info modal opens",
+        modal_title.is_displayed(),
+        "Application information is visible",
+    )
+
+    # Close the modal using Escape.
+    driver.find_element(By.TAG_NAME, "body").send_keys("\ue00c")
+
+    WebDriverWait(driver, TIMEOUT).until(
+        lambda d: len(
+            d.find_elements(
+                By.CSS_SELECTOR,
+                '[aria-label="Application information"]',
+            )
+        )
+        > 0
+    )
+
+
+def test_responsive_viewport(driver):
+    driver.set_window_size(390, 844)
+
+    WebDriverWait(driver, TIMEOUT).until(
+        EC.visibility_of_element_located(
+            (
+                By.XPATH,
+                "//*[contains(normalize-space(), 'LOST DEAL REASON & RECOVERY INTELLIGENCE')]",
+            )
+        )
+    )
+
+    overflow_info = driver.execute_script(
+        """
+        const elements = [...document.querySelectorAll("body *")];
+        const overflowing = elements
+          .filter(el => {
+              const r = el.getBoundingClientRect();
+              return r.right > window.innerWidth + 2;
+          })
+          .slice(0, 10)
+          .map(el => ({
+              tag: el.tagName,
+              className: String(el.className).slice(0, 120),
+              text: (el.innerText || "").trim().slice(0, 80),
+              right: Math.round(el.getBoundingClientRect().right),
+              width: Math.round(el.getBoundingClientRect().width),
+              outerHTML: el.outerHTML.slice(0, 300)
+          }));
+        return {
+            scrollWidth: document.documentElement.scrollWidth,
+            viewportWidth: window.innerWidth,
+            overflowing
+        };
+        """
+    )
+
+    no_horizontal_overflow = (
+        overflow_info["scrollWidth"] <= overflow_info["viewportWidth"] + 2
+    )
+
+    if not no_horizontal_overflow:
+        print(f"       Responsive debug: {overflow_info}")
+
+    record(
+        "Responsive mobile viewport",
+        no_horizontal_overflow,
+        "390x844 viewport checked",
+    )
+
+    driver.set_window_size(1280, 900)
+
+
+def write_report():
+    report_path = Path("test-results/Test_Report.txt")
+
+    passed = sum(1 for _, status, _ in results if status == "PASS")
+    total = len(results)
+
+    with report_path.open("w", encoding="utf-8") as report:
+        report.write("POC-12 — Selenium E2E Test Report\n")
+        report.write("=" * 45 + "\n\n")
+        report.write(f"Live URL: {LIVE_URL}\n\n")
+
+        for index, (name, status, details) in enumerate(results, 1):
+            report.write(f"{index}. {name}: {status}\n")
+            if details:
+                report.write(f"   {details}\n")
+
+        report.write("\n")
+        report.write(f"Passed: {passed}/{total}\n")
+        report.write(f"Failed: {total - passed}/{total}\n\n")
+
+        if passed == total:
+            report.write("FINAL RESULT: 100% PASS\n")
+        else:
+            report.write("FINAL RESULT: CHANGES REQUIRED\n")
+
+
+def main():
+    driver = webdriver.Chrome()
+    driver.set_window_size(1280, 900)
+
+    try:
+        test_live_url(driver)
+        test_main_dashboard(driver)
+        test_core_visualization(driver)
+        test_data_loading(driver)
+        test_filter_interaction(driver)
+        test_backend_communication(driver)
+        test_intelligence_panel(driver)
+        test_info_modal(driver)
+        test_responsive_viewport(driver)
+
+        driver.save_screenshot(
+            str(SCREENSHOT_DIR / "selenium_e2e.png")
+        )
+
+    except Exception as error:
+        record(
+            "Unexpected Selenium error",
+            False,
+            f"{type(error).__name__}: {error}",
+        )
+
+    finally:
+        write_report()
+        driver.quit()
+
+    failed = sum(1 for _, status, _ in results if status == "FAIL")
+
+    print()
+    print("Selenium test run complete.")
+    print("Report: test-results/Test_Report.txt")
+    print("Screenshot: test-results/selenium_e2e.png")
+
+    if failed:
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  async rewrites() {
+    const backendUrl =
+      process.env.BACKEND_URL || "http://backend:8000";
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+</file>
+
+<file path="package.json">
+{
+  "name": "poc-12-lost-deal-recovery",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
+    "lucide-react": "^1.44.0",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.43",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="README.md">
+# PoC 12 — Lost Deal Reason & Recovery Intelligence
+
+A decision-support dashboard for analysing lost CRM deals, identifying recurring loss reasons and competitive signals, and surfacing recovery-oriented actions.
+
+## Overview
+
+This PoC transforms lost-deal CRM records into an interactive intelligence dashboard.
+
+Users can:
+
+- Analyse lost deals by location, team, product, segment, loss reason, and priority
+- Monitor key recovery and loss indicators
+- Explore loss reasons using analytical charts
+- Analyse customer-segment patterns
+- Review competitive loss signals
+- Open an Intelligence Panel for contextual interpretation
+- Review deal-level recovery information
+- Export dashboard data as CSV and JSON
+
+> **Data note:** This PoC uses a synthetic CRM loss/follow-up dataset for demonstration and decision-support purposes. Company names and records are synthetic.
+
+**Live Deployment (Phase 2):** https://poc-12-lost-deal-recovery-phase2.onrender.com/
+
+---
+
+## Phase 2 — Containerization
+
+Phase 2 extends the Lost Deal Recovery intelligence dashboard with a containerized application architecture.
+
+The application includes:
+
+- Next.js frontend
+- FastAPI backend
+- Docker containerization
+- Docker Compose orchestration
+- Frontend-to-backend API communication
+- Separate frontend and backend services
+- Container service networking
+- Next.js API proxy configuration
+
+The application can be built and run locally as a multi-container system using Docker Compose.
+
+---
+
+## Key Features
+
+### Dashboard Intelligence
+
+- KPI summary
+- Interactive filtering
+- Loss-reason analysis
+- Segment analysis
+- Competitive analysis
+- Intelligence Panel
+- Recovery recommendations
+- Deal-level recovery table
+
+### User Interactions
+
+- Filter combinations
+- Interactive chart tooltips
+- Chart selection
+- Intelligence Panel
+- Information interface
+- CSV export
+- JSON export
+
+### Backend Intelligence API
+
+The FastAPI backend provides the API layer for the dashboard.
+
+Available endpoints include:
+
+- `GET /`
+- `GET /health`
+- `GET /api/deals`
+
+The frontend accesses the backend through the Next.js API proxy.
+
+### Containerization
+
+Phase 2 includes:
+
+- Frontend Dockerfile
+- Backend Dockerfile
+- Docker Compose configuration
+- Docker ignore configuration
+- Container service networking
+- API proxy configuration
+
+### Responsive Design
+
+The dashboard is designed for:
+
+- Desktop
+- Tablet
+- Mobile
+
+---
+
+## Technology Stack
+
+### Frontend
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Apache ECharts
+- ECharts React integration
+
+### Backend
+
+- Python
+- FastAPI
+- Uvicorn
+
+### Containerization
+
+- Docker
+- Docker Compose
+
+---
+
+## Project Structure
+
+```text
+poc-12-lost-deal-recovery/
+
+├── app/
+│   ├── components/
+│   │   ├── DashboardCharts.tsx
+│   │   ├── DecisionPanel.tsx
+│   │   ├── IntelligencePanel.tsx
+│   │   └── RecoveryTable.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+│
+├── backend/
+│   ├── main.py
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── public/
+│
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
+├── package.json
+├── package-lock.json
+├── next.config.ts
+├── vercel.json
+└── README.md
 </file>
 
 </files>
