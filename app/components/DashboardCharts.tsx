@@ -406,6 +406,7 @@ export default function DashboardCharts({
           </div>
 
           <ReactECharts
+            data-testid="loss-reason-chart"
             option={paretoOption}
             style={{
               height: 300,
