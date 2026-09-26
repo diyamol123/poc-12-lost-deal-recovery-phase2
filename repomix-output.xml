@@ -51,6 +51,7 @@ app/
   layout.tsx
   page.tsx
 backend/
+  Dockerfile
   main.py
   requirements.txt
 public/
@@ -59,9 +60,12 @@ public/
   next.svg
   vercel.svg
   window.svg
+.dockerignore
 .gitignore
 AGENTS.md
 CLAUDE.md
+docker-compose.yml
+Dockerfile
 eslint.config.mjs
 next.config.ts
 package.json
@@ -1152,6 +1156,22 @@ body {
 }
 </file>
 
+<file path="backend/Dockerfile">
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY main.py .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+</file>
+
 <file path="backend/main.py">
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -1541,6 +1561,20 @@ uvicorn[standard]
 <svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
 </file>
 
+<file path=".dockerignore">
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.local
+*.log
+__pycache__
+*.pyc
+.DS_Store
+repomix-output.xml
+</file>
+
 <file path="AGENTS.md">
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -1576,16 +1610,6 @@ const eslintConfig = defineConfig([
 ]);
 
 export default eslintConfig;
-</file>
-
-<file path="next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-export default nextConfig;
 </file>
 
 <file path="postcss.config.mjs">
@@ -1898,6 +1922,54 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 }
 </file>
 
+<file path="Dockerfile">
+FROM node:22-alpine AS deps
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+EXPOSE 3001
+
+CMD ["npm", "run", "start", "--", "-p", "3001"]
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://backend:8000/api/:path*",
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+</file>
+
 <file path="package.json">
 {
   "name": "poc-12-lost-deal-recovery",
@@ -2141,6 +2213,29 @@ next-env.d.ts
 __pycache__/
 </file>
 
+<file path="docker-compose.yml">
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    ports:
+      - "3001:3001"
+
+
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    ports:
+      - "8001:8000"
+</file>
+
 <file path="README.md">
 # PoC 12 — Lost Deal Reason & Recovery Intelligence
 
@@ -2335,10 +2430,7 @@ export default function Home() {
 
   // Load CRM data from FastAPI
   useEffect(() => {
-    const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_URL || "";
-
-    fetch(`${apiBaseUrl}/api/deals`)
+    fetch("/api/deals")
       .then((response) => {
         if (!response.ok) {
           throw new Error(
