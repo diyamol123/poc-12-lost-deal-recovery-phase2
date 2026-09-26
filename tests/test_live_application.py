@@ -290,6 +290,16 @@ def test_responsive_viewport(driver):
         )
     )
 
+    # Remove any ECharts tooltip left open from the chart interaction.
+    driver.execute_script("""
+        document.querySelectorAll('*').forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (style.position === 'absolute' && style.zIndex === '9999999') {
+                el.remove();
+            }
+        });
+    """)
+
     overflow_info = driver.execute_script(
         """
         const elements = [...document.querySelectorAll("body *")];
